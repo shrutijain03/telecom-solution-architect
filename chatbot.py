@@ -222,7 +222,7 @@ textarea, input {{
 
 
 # ---------------- TITLE ----------------
-st.title("📡 Telecom Co‑Pilot")
+st.title("📡 Telecom Solution Architect Co‑Pilot")
 st.markdown("""
 <div style="text-align:center; margin-bottom:20px">
 <h4 style="color:gray">AI Assistant for Telecom Architecture & TM Forum Standards</h4>
