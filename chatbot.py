@@ -4,7 +4,8 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 import time
 import os 
 import google.generativeai as genai
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+import streamlit as st
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 from datetime import datetime
 import uuid
 from sentence_transformers import CrossEncoder
@@ -331,12 +332,12 @@ Answer in this format:
 🔗 Related APIs:
 Keep answer under 100 words.
 """
-
-    model = genai.GenerativeModel("gemini-1.0-pro")
-
-    response = model.generate_content(prompt)
-
-    content = response.text
+    model = genai.GenerativeModel("models/gemini-1.5-flash")
+    try:
+       response = model.generate_content(prompt)
+       content = response.text
+    except Exception as e:
+       content = "⚠️ Unable to generate response right now. Please try again."
 
     if not content:
         return "⚠️ No response generated."
