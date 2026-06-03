@@ -332,17 +332,28 @@ Answer in this format:
 🔗 Related APIs:
 Keep answer under 100 words.
 """
-    model = genai.GenerativeModel("models/gemini-1.5-flash")
+
     try:
-       response = model.generate_content(prompt)
-       content = response.text
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.2,
+                "max_output_tokens": 200
+            }
+        )
+
+        content = response.text
+
     except Exception as e:
-       content = "⚠️ Unable to generate response right now. Please try again."
+        return f"⚠️ Gemini Error: {str(e)}"
 
     if not content:
         return "⚠️ No response generated."
 
     return content.strip()
+
 
 # ---------------- INPUT ----------------
 default_q = st.session_state.get("prefill", "")
