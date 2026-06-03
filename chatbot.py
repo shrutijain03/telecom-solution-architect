@@ -333,13 +333,24 @@ Answer in this format:
 Keep answer under 100 words.
 """
 
-    try:     
-      model = genai.GenerativeModel("gemini-pro")
-      response = model.generate_content(prompt)
-      content = response.text
+    # ✅ ADD THIS BLOCK HERE
+    models = genai.list_models()
+    for m in models:
+        st.write(m.name)
+
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")  # temporary
+
+        response = model.generate_content(prompt)
+        content = response.text
 
     except Exception as e:
-       return f"⚠️ Gemini Error: {str(e)}"
+        return f"⚠️ Gemini Error: {str(e)}"
+
+    if not content:
+        return "⚠️ No response generated."
+
+    return content.strip()
 
 # ---------------- INPUT ----------------
 default_q = st.session_state.get("prefill", "")
