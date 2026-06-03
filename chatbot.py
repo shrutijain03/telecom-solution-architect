@@ -395,6 +395,20 @@ if question:
 
     answer = generate_answer(question, context)
 
+    # ✅ Generate simple domain-based sources
+sources = []
+
+if "etom" in question.lower():
+    sources = ["TM Forum eTOM Framework"]
+elif "sid" in question.lower():
+    sources = ["TM Forum SID Model"]
+elif "api" in question.lower() or "tmf" in question.lower():
+    sources = ["TMF Open APIs"]
+elif "servicenow" in question.lower():
+    sources = ["ServiceNow Documentation"]
+else:
+    sources = ["Telecom Domain Knowledge (AI Generated)"]
+
     typing.empty()
     chat.append(("bot", {"text": answer, "sources": sources, "domain": domain,"confidence": confidence}, ts))
 
@@ -424,17 +438,17 @@ for i, (role, msg, ts) in enumerate(chat):
 
         # ✅ BOT MESSAGE
         st.markdown(f"""
-        <div class="bot-msg">
-            <div class="bot-bubble">
-                {text}
-        """, unsafe_allow_html=True)
+    <div class="bot-msg">
+    <div class="bot-bubble">
+        {text}<br>
+        <small>{ts}</small>
+     """, unsafe_allow_html=True)
 
         # ✅ SOURCES
         if sources:
-            st.markdown("<br><b>Sources:</b>", unsafe_allow_html=True)
+            st.markdown("<br><b>🔗 Sources:</b>", unsafe_allow_html=True)
             for s in sources:
-                clean_name = s.replace(".pdf", "").replace("_", " ")
-                st.markdown(f"- {clean_name}")
+                st.markdown(f"- {s}")
 
         st.markdown("</div></div>", unsafe_allow_html=True)
 
@@ -478,8 +492,6 @@ for i, (role, msg, ts) in enumerate(chat):
 
                 st.rerun()
 
-        # ✅ CONFIDENCE DISPLAY
-        if confidence:
-            st.markdown(f"**Confidence:** {confidence}")
+    
 
         st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
