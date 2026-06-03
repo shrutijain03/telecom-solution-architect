@@ -277,7 +277,8 @@ def generate_answer(question, context):
         prompt = f"""
 You are a Telecom Solution Architect.
 
-Use the context to design a telecom system.
+Use the context below if available.
+If the context is empty, answer based on your telecom knowledge.
 
 Context:
 {context}
@@ -332,9 +333,6 @@ Answer in this format:
 🔗 Related APIs:
 Keep answer under 100 words.
 """
-
-   
-
     try:
         model = genai.GenerativeModel("models/gemini-2.5-flash")  
 
