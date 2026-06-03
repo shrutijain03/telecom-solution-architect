@@ -308,7 +308,8 @@ Keep it practical and concise.
         prompt = f"""
 You are a Telecom Solution Architect AI.
 
-Use ONLY the context below to answer.
+Use the context below if available.
+If the context is empty, answer based on telecom domain knowledge.
 
 Context:
 {context}
