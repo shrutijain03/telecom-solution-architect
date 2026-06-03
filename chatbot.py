@@ -333,13 +333,10 @@ Answer in this format:
 Keep answer under 100 words.
 """
 
-    # ✅ ADD THIS BLOCK HERE
-    models = genai.list_models()
-    for m in models:
-        st.write(m.name)
+   
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")  # temporary
+        model = genai.GenerativeModel("models/gemini-2.5-flash")  
 
         response = model.generate_content(prompt)
         content = response.text
