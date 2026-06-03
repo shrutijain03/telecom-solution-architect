@@ -361,6 +361,7 @@ if question:
     domain = detect_domain(question)
     ts = datetime.now().strftime("%I:%M %p")
 
+    # ✅ Add user message
     chat.append(("user", question, ts))
 
     if chat_data["name"] == "New Chat":
@@ -369,49 +370,46 @@ if question:
     domain = detect_domain(question)
     selected = domain if domain_filter == "Auto" else domain_filter
 
+    # ✅ No DB (Gemini-only mode)
     docs = []
     context = ""
-    sources = []
     confidence = "Low"
 
-
-
-# ✅ ADD HERE (step 4 integration)
-    dconfidence = "Low"
-    context = ""
-
-    sources = []
-    if docs:
-        for d in docs:
-            file_name = d.metadata.get("file_name", "Unknown")
-            sources.append(f"{d.metadata.get('source')} → {file_name}")
-
+    # ✅ Loading message
     typing = st.empty()
     typing.markdown("🔍 Searching telecom knowledge...")
-    
     typing.markdown(f"🕵🏻 Detected Domain: {domain}")
-
     typing.markdown("🧠 Generating architecture-aware answer...")
 
+    # ✅ Generate answer
     answer = generate_answer(question, context)
 
-    # ✅ Generate simple domain-based sources
-sources = []
-
-if "etom" in question.lower():
-    sources = ["TM Forum eTOM Framework"]
-elif "sid" in question.lower():
-    sources = ["TM Forum SID Model"]
-elif "api" in question.lower() or "tmf" in question.lower():
-    sources = ["TMF Open APIs"]
-elif "servicenow" in question.lower():
-    sources = ["ServiceNow Documentation"]
-else:
-    sources = ["Telecom Domain Knowledge (AI Generated)"]
-
     typing.empty()
-    chat.append(("bot", {"text": answer, "sources": sources, "domain": domain,"confidence": confidence}, ts))
 
+    # ✅ ✅ GENERATE SOURCES (FIXED POSITION)
+    sources = []
+
+    if "etom" in question.lower():
+        sources = ["TM Forum eTOM Framework"]
+    elif "sid" in question.lower():
+        sources = ["TM Forum SID Model"]
+    elif "api" in question.lower() or "tmf" in question.lower():
+        sources = ["TMF Open APIs"]
+    elif "servicenow" in question.lower():
+        sources = ["ServiceNow Documentation"]
+    else:
+        sources = ["Telecom Domain Knowledge (AI Generated)"]
+
+    # ✅ Add bot response
+    chat.append((
+        "bot",
+        {
+            "text": answer,
+            "sources": sources,
+            "domain": domain
+        },
+        ts
+    ))
 # ---------------- DISPLAY ----------------
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 
