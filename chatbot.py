@@ -334,7 +334,7 @@ Keep answer under 100 words.
 """
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-pro")
 
         response = model.generate_content(
             prompt,
