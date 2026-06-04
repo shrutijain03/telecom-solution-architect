@@ -176,30 +176,52 @@ section[data-testid="stSidebar"] * {{
     color: {TEXT_COLOR};
 }}
 
-button {{
-    border-radius: 6px;
-    background-color: """ + CARD_BG + """;
-    color: """ + TEXT_COLOR + """;
-    border: 1px solid """ + BORDER + """;
-
-}}
-/* ✅ CHAT BUTTONS FIX */
-section[data-testid="stSidebar"] button {{
-    background-color: """ + ( "#374151" if dark_mode else "#e5e7eb" ) + """;
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """;
-    border: 1px solid """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """;
-    width: 100%;
-    text-align: left;
-}}
-/* ✅ FIX REGENERATE BUTTON */
-button[kind="secondary"] {{
-    background-color: """ + ( "#DADEE6" if dark_mode else "#f1f5f9" ) + """;
-    color: """ + ( "#0e0e0f" if dark_mode else "#111827" ) + """;
-    border: 1px solid """ + ( "#dde1e7" if dark_mode else "#e5e7eb" ) + """;
+/* ===== ALL BUTTONS BASE ===== */
+.stButton > button {{
+    border-radius: 6px !important;
+    background-color: {CARD_BG} !important;
+    color: {TEXT_COLOR} !important;
+    border: 1px solid {BORDER} !important;
 }}
 
-button[kind="secondary"]:hover {{}
-    background-color: """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """;
+.stButton > button:hover {{
+    background-color: {BORDER} !important;
+    color: {TEXT_COLOR} !important;
+    border: 1px solid {BORDER} !important;
+}}
+
+/* ===== SIDEBAR CHAT BUTTONS ===== */
+section[data-testid="stSidebar"] .stButton > button {{
+    background-color: """ + ( "#2d3748" if dark_mode else "#e5e7eb" ) + """ !important;
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+    border: 1px solid """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """ !important;
+    width: 100% !important;
+    text-align: left !important;
+}}
+
+section[data-testid="stSidebar"] .stButton > button p {{
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+}}
+
+section[data-testid="stSidebar"] .stButton > button:hover {{
+    background-color: """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """ !important;
+}}
+
+/* ===== REGENERATE + MAIN AREA BUTTONS ===== */
+.stButton > button[data-testid="baseButton-secondary"],
+.stButton > button {{
+    background-color: """ + ( "#2d3748" if dark_mode else "#f1f5f9" ) + """ !important;
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+    border: 1px solid """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """ !important;
+}}
+
+/* Force text color inside ALL buttons (Streamlit wraps in <p>) */
+.stButton > button p {{
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+}}
+
+.stButton > button:hover {{
+    background-color: """ + ( "#4b5563" if dark_mode else "#e2e8f0" ) + """ !important;
 }}
 
 </style>
