@@ -104,12 +104,16 @@ chat = chat_data["messages"]
 # ---------------- COLORS ----------------
 if dark_mode:
     PAGE_BG = "#0f172a"
-    TEXT_COLOR = "white"
-    SUBTEXT = "#9ca3af"
+    CARD_BG = "#1e293b"
+    TEXT_COLOR = "#f9fafb"
+    SUBTEXT = "#94a3b8"
+    BORDER = "#334155"
 else:
     PAGE_BG = "#f8fafc"
+    CARD_BG = "#f1f5f9"
     TEXT_COLOR = "#111827"
     SUBTEXT = "#6b7280"
+    BORDER = "#e5e7eb"
 
 # ---------------- STYLE ----------------
 st.markdown(f"""
@@ -122,110 +126,59 @@ body, .stApp {{
 
 .chat-container {{
     max-width: 700px;
-    margin: auto
+    margin: auto;
 }}
+
 .user-msg {{
     text-align: right;
-    margin: 8px 0;
 }}
+
 .user-bubble {{
-    display: inline-block;
     background: linear-gradient(135deg, #8B5CF6, #6D28D9);
     color: white;
     padding: 10px 14px;
     border-radius: 18px;
-    font-size: 14px;
     max-width: 70%;
-}}
-.bot-msg {{
-    text-align: left;
-    margin: 8px 0;
-}}
-.bot-msg, .user-msg {{
-    margin-bottom: 16px;
 }}
 
 .bot-bubble {{
-    background: #f1f5f9;
-    color: #111827;
-    border-radius: 14px;
+    background: {CARD_BG};
+    color: {TEXT_COLOR};
     padding: 14px;
-    margin-top: 6px;
-    font-size: 14px;
-    line-height: 1.5;
+    border-radius: 14px;
+    border: 1px solid {BORDER};
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }}
 
-/* ✅ DARK MODE FIX */
-body.dark .bot-bubble {{
-    background: #1e293b !important;
-    color: #f9fafb !important;
+small {{
+    color: {SUBTEXT};
 }}
-.bot-bubble:hover {{
-    transform: translateY(-2px);
+
+textarea, input {{
+    background-color: {CARD_BG};
+    color: {TEXT_COLOR};
+    border: 1px solid {BORDER};
+    border-radius: 10px;
 }}
 
 section[data-testid="stSidebar"] {{
-    background-color: #f9fafb;
-    border-right: 1px solid #e5e7eb;
-}}
-
-section[data-testid="stSidebar"] h3 {{
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-}}
-
-section[data-testid="stSidebar"] button {{
-    border-radius: 8px;
-}}
-.main .block-container {{
-    padding-top: 2rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    padding-bottom: 1rem;
-}}
-
-section[data-testid="stSidebar"] {{
-    background-color: { "#1f2937" if dark_mode else "#f1f5f9" };
-    border-right: 1px solid { "#374151" if dark_mode else "#e5e7eb" };
+    background-color: {CARD_BG};
+    border-right: 1px solid {BORDER};
 }}
 
 section[data-testid="stSidebar"] * {{
-    color: { "#f9fafb" if dark_mode else "#111827" };
+    color: {TEXT_COLOR};
 }}
+
 button {{
     border-radius: 6px;
-    height: 32px;
-    font-size: 12px;
-}}
-
-* ✅ ADD HERE */
-h1 {{
-    margin-bottom: 5px;
-}}
-
-p {{
-    margin-top: 0px;
-}}
-small {{
-    color: {SUBTEXT};
-    font-size: 11px;
-}}
-.bot-msg b {{
-    color: """ + ("#e5e7eb" if dark_mode else "#111827") + """;
-}}
-textarea, input {{
-    
-background-color: """ + ("#1e293b" if dark_mode else "white") + """;
-    color: """ + ("#f9fafb" if dark_mode else "#111827") + """;
-    border: 1px solid """ + ("#374151" if dark_mode else "#e5e7eb") + """;
+    background-color: """ + CARD_BG + """;
+    color: """ + TEXT_COLOR + """;
+    border: 1px solid """ + BORDER + """;
 
 }}
-
 </style>
 """, unsafe_allow_html=True)
-
 
 # ---------------- TITLE ----------------
 
@@ -458,16 +411,11 @@ for i, (role, msg, ts) in enumerate(chat):
         st.markdown("<br><b>🔗 Sources</b>", unsafe_allow_html=True)
 
         for s in sources:
-            bg = "#1e293b" if dark_mode else "#f1f5f9"
-            color = "#f9fafb" if dark_mode else "#111827"
-
-        st.markdown(
-    f"<div style='background:{bg}; color:{color}; padding:6px 10px; border-radius:8px; margin:4px 0; font-size:13px;'>✅ {s}</div>",
-    unsafe_allow_html=True
-)
-
-
-
+            for s in sources:
+              st.markdown(
+        f"<div style='background:{CARD_BG}; color:{TEXT_COLOR}; padding:6px 10px; border-radius:8px; margin:4px 0; font-size:13px; border:1px solid {BORDER};'>✅ {s}</div>",
+        unsafe_allow_html=True
+    )
         st.markdown("</div></div>", unsafe_allow_html=True)
 
         # ✅ BUTTONS INSIDE LOOP ✅
