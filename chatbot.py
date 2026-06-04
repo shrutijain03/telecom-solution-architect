@@ -4,9 +4,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 import time
 import os 
 import google.generativeai as genai
-import streamlit as st
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-from datetime import datetime
 import uuid
 from sentence_transformers import CrossEncoder
 from datetime import datetime
@@ -149,6 +147,7 @@ body, .stApp {{
 
 .bot-bubble {{
     background: #f1f5f9;
+    color: #111827;
     border-radius: 14px;
     padding: 14px;
     margin-top: 6px;
@@ -156,9 +155,11 @@ body, .stApp {{
     line-height: 1.5;
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }}
+
+/* ✅ DARK MODE FIX */
 body.dark .bot-bubble {{
-    background: #1e293b;
-    color: #f9fafb;
+    background: #1e293b !important;
+    color: #f9fafb !important;
 }}
 .bot-bubble:hover {{
     transform: translateY(-2px);
@@ -215,8 +216,11 @@ small {{
     color: """ + ("#e5e7eb" if dark_mode else "#111827") + """;
 }}
 textarea, input {{
-    background-color: """ + ("#1e293b" if dark_mode else "white") + """;
-    color: """ + ("#e5e7eb" if dark_mode else "#111827") + """;
+    
+background-color: """ + ("#1e293b" if dark_mode else "white") + """;
+    color: """ + ("#f9fafb" if dark_mode else "#111827") + """;
+    border: 1px solid """ + ("#374151" if dark_mode else "#e5e7eb") + """;
+
 }}
 
 </style>
@@ -454,10 +458,15 @@ for i, (role, msg, ts) in enumerate(chat):
         st.markdown("<br><b>🔗 Sources</b>", unsafe_allow_html=True)
 
         for s in sources:
-         st.markdown(
-        f"<div style='background:#f1f5f9; padding:6px 10px; border-radius:8px; margin:4px 0; font-size:13px;'>✅ {s}</div>",
-        unsafe_allow_html=True
-      )
+            bg = "#1e293b" if dark_mode else "#f1f5f9"
+            color = "#f9fafb" if dark_mode else "#111827"
+
+        st.markdown(
+    f"<div style='background:{bg}; color:{color}; padding:6px 10px; border-radius:8px; margin:4px 0; font-size:13px;'>✅ {s}</div>",
+    unsafe_allow_html=True
+)
+
+
 
         st.markdown("</div></div>", unsafe_allow_html=True)
 
@@ -493,10 +502,12 @@ for i, (role, msg, ts) in enumerate(chat):
 
                 new_answer = generate_answer(prev_user_msg, context)
 
+                ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
+
                 chat.append((
-                    "bot",
-                    {"text": new_answer, "sources": [], "confidence": confidence},
-                    datetime.now().strftime("%I:%M %p")
+                "bot",
+                {"text": new_answer, "sources": [], "confidence": confidence},
+                ts
                 ))
 
                 st.rerun()
