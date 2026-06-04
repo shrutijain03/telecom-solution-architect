@@ -9,6 +9,9 @@ genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 from datetime import datetime
 import uuid
 from sentence_transformers import CrossEncoder
+from datetime import datetime
+import pytz
+
 
 # ---------------- SESSION INIT ----------------
 if "chats" not in st.session_state:
@@ -121,7 +124,7 @@ body, .stApp {{
 }}
 
 .chat-container {{
-    max-width: 600px;
+    max-width: 700px;
     margin: auto
 }}
 .user-msg {{
@@ -146,17 +149,17 @@ body, .stApp {{
 }}
 
 .bot-bubble {{
-    background: """ + ("#1e293b" if dark_mode else "#f9fafb") + """;
-    color: { "#e5e7eb" if dark_mode else "#111827" };
-    padding: 16px;
-    border-radius: 16px;
-    max-width: 75%;
-    font-size: 14px;
-    line-height: 1.6;
-    border: 1px solid { "#334155" if dark_mode else "#e5e7eb" };
-    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    background: #f1f5f9;
+    border-radius: 14px;
+    padding: 14px;
     margin-top: 6px;
-    white-space: pre-line;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}}
+body.dark .bot-bubble {{
+    background: #1e293b;
+    color: #f9fafb;
 }}
 .bot-bubble:hover {{
     transform: translateY(-2px);
@@ -222,12 +225,16 @@ textarea, input {{
 
 
 # ---------------- TITLE ----------------
-st.title("📡 Telecom Solution Architect Co‑Pilot")
+
+
 st.markdown("""
-<div style="text-align:center; margin-bottom:20px">
-<h4 style="color:gray">AI Assistant for Telecom Architecture & TM Forum Standards</h4>
-</div>
+<h1 style='text-align: center;'>📡 Telecom Solution Architect Co‑Pilot</h1>
+<p style='text-align: center; color: gray;'>
+AI Assistant for Telecom Architecture, TM Forum & OSS/BSS Design
+</p>
 """, unsafe_allow_html=True)
+
+
 
 st.markdown("""
 ### Suggested Queries
@@ -359,7 +366,10 @@ if default_q and not question:
 # ---------------- HANDLE QUERY ----------------
 if question:
     domain = detect_domain(question)
-    ts = datetime.now().strftime("%I:%M %p")
+    
+    ist = pytz.timezone("Asia/Kolkata")
+    ts = datetime.now(ist).strftime("%I:%M %p")
+
 
     # ✅ Add user message
     chat.append(("user", question, ts))
@@ -443,10 +453,13 @@ for i, (role, msg, ts) in enumerate(chat):
      """, unsafe_allow_html=True)
 
         # ✅ SOURCES
-        if sources:
-            st.markdown("<br><b>🔗 Sources:</b>", unsafe_allow_html=True)
-            for s in sources:
-                st.markdown(f"- {s}")
+        st.markdown("<br><b>🔗 Sources</b>", unsafe_allow_html=True)
+
+        for s in sources:
+         st.markdown(
+        f"<div style='background:#f1f5f9; padding:6px 10px; border-radius:8px; margin:4px 0; font-size:13px;'>✅ {s}</div>",
+        unsafe_allow_html=True
+      )
 
         st.markdown("</div></div>", unsafe_allow_html=True)
 
@@ -454,7 +467,7 @@ for i, (role, msg, ts) in enumerate(chat):
         col1, col2 = st.columns([1, 1])
 
         with col1:
-            if st.button("Regenerate", key=f"regen_{i}"):
+            if st.button("🔄Regenerate", key=f"regen_{i}"):
 
                 prev_user_msg = None
 
