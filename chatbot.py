@@ -134,11 +134,17 @@ body, .stApp {{
 }}
 
 .user-bubble {{
+    display: inline-block;
     background: linear-gradient(135deg, #8B5CF6, #6D28D9);
     color: white;
     padding: 10px 14px;
     border-radius: 18px;
     max-width: 70%;
+}}
+
+/* ✅ FIX TIMESTAMP INSIDE USER MESSAGE */
+.user-bubble small {{
+    color: #e5e7eb;
 }}
 
 .bot-bubble {{
@@ -177,6 +183,25 @@ button {{
     border: 1px solid """ + BORDER + """;
 
 }}
+/* ✅ CHAT BUTTONS FIX */
+section[data-testid="stSidebar"] button {{
+    background-color: """ + ( "#374151" if dark_mode else "#e5e7eb" ) + """;
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """;
+    border: 1px solid """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """;
+    width: 100%;
+    text-align: left;
+}}
+/* ✅ FIX REGENERATE BUTTON */
+button[kind="secondary"] {{
+    background-color: """ + ( "#374151" if dark_mode else "#f1f5f9" ) + """;
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """;
+    border: 1px solid """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """;
+}}
+
+button[kind="secondary"]:hover {{}
+    background-color: """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
