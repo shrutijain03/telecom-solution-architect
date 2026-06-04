@@ -193,9 +193,9 @@ section[data-testid="stSidebar"] button {{
 }}
 /* ✅ FIX REGENERATE BUTTON */
 button[kind="secondary"] {{
-    background-color: """ + ( "#374151" if dark_mode else "#f1f5f9" ) + """;
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """;
-    border: 1px solid """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """;
+    background-color: """ + ( "#DADEE6" if dark_mode else "#f1f5f9" ) + """;
+    color: """ + ( "#0e0e0f" if dark_mode else "#111827" ) + """;
+    border: 1px solid """ + ( "#dde1e7" if dark_mode else "#e5e7eb" ) + """;
 }}
 
 button[kind="secondary"]:hover {{}
