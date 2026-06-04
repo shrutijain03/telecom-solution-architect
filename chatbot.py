@@ -10,8 +10,7 @@ from datetime import datetime
 import uuid
 from sentence_transformers import CrossEncoder
 from datetime import datetime
-import pytz
-
+from zoneinfo import ZoneInfo
 
 # ---------------- SESSION INIT ----------------
 if "chats" not in st.session_state:
@@ -367,8 +366,7 @@ if default_q and not question:
 if question:
     domain = detect_domain(question)
     
-    ist = pytz.timezone("Asia/Kolkata")
-    ts = datetime.now(ist).strftime("%I:%M %p")
+    ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
 
 
     # ✅ Add user message
