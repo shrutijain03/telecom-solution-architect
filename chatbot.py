@@ -176,30 +176,58 @@ section[data-testid="stSidebar"] * {{
     color: {TEXT_COLOR};
 }}
 
-button {{
-    border-radius: 6px;
-    background-color: """ + CARD_BG + """;
-    color: """ + TEXT_COLOR + """;
-    border: 1px solid """ + BORDER + """;
-
-}}
-/* ✅ CHAT BUTTONS FIX */
-section[data-testid="stSidebar"] button {{
-    background-color: """ + ( "#374151" if dark_mode else "#e5e7eb" ) + """;
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """;
-    border: 1px solid """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """;
-    width: 100%;
-    text-align: left;
-}}
-/* ✅ FIX REGENERATE BUTTON */
-button[kind="secondary"] {{
-    background-color: """ + ( "#374151" if dark_mode else "#f1f5f9" ) + """;
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """;
-    border: 1px solid """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """;
+/* ===== ALL BUTTONS BASE ===== */
+.stButton > button {{
+    border-radius: 6px !important;
+    background-color: """ + ( "#2d3748" if dark_mode else "#f1f5f9" ) + """ !important;
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+    border: 1px solid """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """ !important;
 }}
 
-button[kind="secondary"]:hover {{}
-    background-color: """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """;
+/* Force text color inside ALL buttons (Streamlit wraps label in <p>) */
+.stButton > button p {{
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+}}
+
+.stButton > button:hover {{
+    background-color: """ + ( "#4b5563" if dark_mode else "#e2e8f0" ) + """ !important;
+}}
+
+/* ===== SIDEBAR BUTTONS ===== */
+section[data-testid="stSidebar"] .stButton > button {{
+    background-color: """ + ( "#2d3748" if dark_mode else "#e5e7eb" ) + """ !important;
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+    border: 1px solid """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """ !important;
+    width: 100% !important;
+    text-align: left !important;
+}}
+
+section[data-testid="stSidebar"] .stButton > button p {{
+    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
+}}
+
+section[data-testid="stSidebar"] .stButton > button:hover {{
+    background-color: """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """ !important;
+}}
+
+/* ===== SUGGESTED QUERY BUTTONS ===== */
+div[data-testid="column"] .stButton > button {{
+    background: """ + ( "linear-gradient(135deg, #312e81, #4c1d95)" if dark_mode else "linear-gradient(135deg, #ede9fe, #ddd6fe)" ) + """ !important;
+    color: """ + ( "#e0e7ff" if dark_mode else "#4c1d95" ) + """ !important;
+    border: 1px solid """ + ( "#4338ca" if dark_mode else "#a78bfa" ) + """ !important;
+    font-size: 13px !important;
+    white-space: normal !important;
+    height: auto !important;
+    min-height: 52px !important;
+    line-height: 1.4 !important;
+}}
+
+div[data-testid="column"] .stButton > button p {{
+    color: """ + ( "#e0e7ff" if dark_mode else "#4c1d95" ) + """ !important;
+}}
+
+div[data-testid="column"] .stButton > button:hover {{
+    opacity: 0.85 !important;
 }}
 
 </style>
