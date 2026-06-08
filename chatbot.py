@@ -306,7 +306,7 @@ def generate_answer(question, context):
     if is_architecture_query(question):
 
         prompt = f"""
-You are a Telecom Solution Architect.
+You are a Telecom Solution Architect. Always respond using bullet points and clearly separated sections.
 
 Use the context below if available.
 If the context is empty, answer based on your telecom knowledge.
@@ -337,7 +337,7 @@ Keep it practical and concise.
     else:
 
         prompt = f"""
-You are a Telecom Solution Architect AI.
+You are a Telecom Solution Architect AI. Always respond using bullet points and clearly separated sections.
 
 Use the context below if available.
 If the context is empty, answer based on telecom domain knowledge.
@@ -369,7 +369,7 @@ IMPORTANT:
 - Write each section in separate lines
 - Do NOT combine sections
 - Provide meaningful explanation, not short phrases
-- Each section MUST contain at least 2 bullet points
+- Each section MUST be written as bullet points starting with "-"
 
 You MUST always break sections into new lines using newline characters.
 """
@@ -384,23 +384,31 @@ You MUST always break sections into new lines using newline characters.
             max_tokens=500
     )
 
-        content = response.choices[0].message.content
+        import re
+
         content = content.strip()
 
-           # ✅ FORCE NEWLINES FOR STRUCTURE
-        content = content.replace("📘", "\n📘")
-        content = content.replace("🔧", "\n🔧")
-        content = content.replace("🏗️", "\n🏗️")
-        content = content.replace("💡", "\n💡")
-        content = content.replace("🔗", "\n🔗")
+        # ✅ Step 1: break sections into new lines
+        content = re.sub(r"(📘|🔧|🏗️|💡|🔗)", r"\n\1", content)
 
+        # ✅ Step 2: split into lines
+        lines = content.split("\n")
+
+        formatted_lines = []
+
+        for line in lines:
+            line = line.strip()
+
+            if any(symbol in line for symbol in ["📘", "🔧", "🏗️", "💡", "🔗"]):
+                formatted_lines.append(f"\n{line}")  # section header
+            elif line:
+                formatted_lines.append(f"- {line}")  # force bullet
+
+        content = "\n".join(formatted_lines)
+        
     except Exception as e:
-        return f"⚠️ Groq Error: {str(e)}"
+     return f"⚠️ Groq Error: {str(e)}"
 
-    if not content:
-        return "⚠️ No response generated."
-
-    return content.strip()
 
 # ---------------- INPUT ----------------
 default_q = st.session_state.get("prefill", "")
