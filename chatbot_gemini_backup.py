@@ -3,8 +3,8 @@ from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 import time
 import os 
-from groq import Groq
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+import google.generativeai as genai
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 import uuid
 from sentence_transformers import CrossEncoder
 from datetime import datetime
@@ -366,20 +366,13 @@ Answer in this format:
 Keep answer under 100 words.
 """
     try:
-        response = client.chat.completions.create(
-            model="llama3-8b-8192",   # ✅ best for speed + quality
-            messages=[
-            {"role": "system", "content": "You are a telecom solution architect AI."},
-            {"role": "user", "content": prompt}
-        ],
-            temperature=0.2,
-            max_tokens=500
-    )
+        model = genai.GenerativeModel("models/gemini-2.5-flash")  
 
-        content = response.choices[0].message.content
+        response = model.generate_content(prompt)
+        content = response.text
 
     except Exception as e:
-        return f"⚠️ Groq Error: {str(e)}"
+        return f"⚠️ Gemini Error: {str(e)}"
 
     if not content:
         return "⚠️ No response generated."
