@@ -367,7 +367,7 @@ Keep answer under 100 words.
 """
     try:
         response = client.chat.completions.create(
-            model="llama3-8b-8192",   # ✅ best for speed + quality
+            model="llama3.3-70b",   # ✅ best for speed + quality
             messages=[
             {"role": "system", "content": "You are a telecom solution architect AI."},
             {"role": "user", "content": prompt}
