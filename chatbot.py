@@ -369,7 +369,9 @@ IMPORTANT:
 - Write each section in separate lines
 - Do NOT combine sections
 - Provide meaningful explanation, not short phrases
-- Avoid overly brief answers
+- Each section MUST contain at least 2 bullet points
+
+You MUST always break sections into new lines using newline characters.
 """
     try:
         response = client.chat.completions.create(
@@ -383,6 +385,14 @@ IMPORTANT:
     )
 
         content = response.choices[0].message.content
+        content = content.strip()
+
+           # ✅ FORCE NEWLINES FOR STRUCTURE
+        content = content.replace("📘", "\n📘")
+        content = content.replace("🔧", "\n🔧")
+        content = content.replace("🏗️", "\n🏗️")
+        content = content.replace("💡", "\n💡")
+        content = content.replace("🔗", "\n🔗")
 
     except Exception as e:
         return f"⚠️ Groq Error: {str(e)}"
