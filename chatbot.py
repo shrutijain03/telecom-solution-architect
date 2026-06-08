@@ -174,8 +174,7 @@ section[data-testid="stSidebar"] {{
 
 section[data-testid="stSidebar"] * {{
     color: {TEXT_COLOR};
-}}
-
+}} 
 /* ===== ALL BUTTONS BASE ===== */
 .stButton > button {{
     border-radius: 6px !important;
@@ -368,9 +367,9 @@ Answer STRICTLY in the following format.
 IMPORTANT:
 - Write each section in separate lines
 - Do NOT combine sections
-- Provide meaningful explanation, not short phrases
 - Each section MUST be written as bullet points starting with "-"
-
+- Each section MUST contain at least 3 detailed bullet points.
+- Provide detailed explanations, not short summaries.
 You MUST always break sections into new lines using newline characters.
 """
     try:
@@ -383,7 +382,7 @@ You MUST always break sections into new lines using newline characters.
             temperature=0.2,
             max_tokens=500
     )
-
+        content = response.choices[0].message.content
         import re
 
         content = content.strip()
