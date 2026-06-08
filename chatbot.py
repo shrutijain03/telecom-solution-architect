@@ -348,22 +348,28 @@ Context:
 Question:
 {question}
 
-Answer in this format:
+Answer STRICTLY in the following format.
 
 📘 Definition:
-(1–2 lines)
+- 2–3 clear lines
 
 🔧 Telecom Context:
-(1–2 lines)
+- 2–3 lines with telecom relevance
 
 🏗️ Architecture Relevance:
-(1–2 lines)
+- Explain importance in system design (2–3 lines)
 
 💡 Example:
-(1–2 lines)
+- Real telecom use case
 
 🔗 Related APIs:
-Keep answer under 100 words.
+- List relevant APIs
+
+IMPORTANT:
+- Write each section in separate lines
+- Do NOT combine sections
+- Provide meaningful explanation, not short phrases
+- Avoid overly brief answers
 """
     try:
         response = client.chat.completions.create(
