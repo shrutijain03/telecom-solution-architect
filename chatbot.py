@@ -368,7 +368,7 @@ IMPORTANT:
 - Write each section in separate lines
 - Do NOT combine sections
 - Each section MUST be written as bullet points starting with "-"
-- Each section MUST contain at least 3 detailed bullet points.
+- Each section MUST contain at least 2 detailed bullet points.
 - Provide detailed explanations, not short summaries.
 You MUST always break sections into new lines using newline characters.
 """
@@ -402,8 +402,11 @@ You MUST always break sections into new lines using newline characters.
 
             if any(sym in line for sym in ["📘", "🔧", "🏗️", "💡", "🔗"]):
                 formatted.append(f"\n{line}")  # section header
-            elif line:
-                formatted.append(f"- {line}")  # force bullet
+            elif line: 
+                 if line.startswith("-"):
+                  formatted.append(line)
+                 else:
+                  formatted.append(f"- {line}")
 
         content = "\n".join(formatted)
         
