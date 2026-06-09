@@ -395,17 +395,17 @@ You MUST always break sections into new lines using newline characters.
        
         lines = content.split("\n")
 
-        formatted_lines = []
+        formatted = []
 
         for line in lines:
             line = line.strip()
 
             if any(sym in line for sym in ["📘", "🔧", "🏗️", "💡", "🔗"]):
-                formatted_lines.append(f"\n{line}")  # section header
+                formatted.append(f"\n{line}")  # section header
             elif line:
-                formatted_lines.append(f"- {line}")  # force bullet
+                formatted.append(f"- {line}")  # force bullet
 
-        content = "\n".join(formatted_lines)
+        content = "\n".join(formatted)
         
     except Exception as e:
      return f"⚠️ Groq Error: {str(e)}"
