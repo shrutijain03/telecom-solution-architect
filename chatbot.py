@@ -376,21 +376,23 @@ You MUST always break sections into new lines using newline characters.
         response = client.chat.completions.create(
             model = "qwen/qwen3-32b",  
             messages=[
-            {"role": "system", "content": "You are a telecom solution architect AI."},
+            {"role": "system", "content": "You are a telecom solution architect AI. Provide detailed answers with clear sections and bullet points."},
             {"role": "user", "content": prompt}
         ],
-            temperature=0.2,
-            max_tokens=500
+            temperature=0.5,
+            max_tokens=800
     )
-        content = response.choices[0].message.content
+        content = response.choices[0].message.content if response.choices else ""
+
+        if not content:
+           return "⚠️ No response generated."
+
         import re
 
         content = content.strip()
-
-        # ✅ Step 1: break sections into new lines
         content = re.sub(r"(📘|🔧|🏗️|💡|🔗)", r"\n\1", content)
-
-        # ✅ Step 2: split into lines
+        
+       
         lines = content.split("\n")
 
         formatted_lines = []
@@ -398,12 +400,12 @@ You MUST always break sections into new lines using newline characters.
         for line in lines:
             line = line.strip()
 
-            if any(symbol in line for symbol in ["📘", "🔧", "🏗️", "💡", "🔗"]):
-                formatted_lines.append(f"\n{line}")  # section header
+            if any(sym in line for sym in ["📘", "🔧", "🏗️", "💡", "🔗"]):
+                formatted.append(f"\n{line}")  # section header
             elif line:
-                formatted_lines.append(f"- {line}")  # force bullet
+                formatted.append(f"- {line}")  # force bullet
 
-        content = "\n".join(formatted_lines)
+        content = "\n".join(formatted)
         
     except Exception as e:
      return f"⚠️ Groq Error: {str(e)}"
