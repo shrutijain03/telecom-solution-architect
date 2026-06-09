@@ -409,6 +409,7 @@ You MUST always break sections into new lines using newline characters.
         
     except Exception as e:
      return f"⚠️ Groq Error: {str(e)}"
+    return content
 
 # ---------------- INPUT ----------------
 default_q = st.session_state.get("prefill", "")
