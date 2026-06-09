@@ -374,7 +374,7 @@ You MUST always break sections into new lines using newline characters.
 """
     try:
         response = client.chat.completions.create(
-            model = "openai/gpt-oss-20b",  
+            model = "qwen/qwen3-32b",  
             messages=[
             {"role": "system", "content": "You are a telecom solution architect AI."},
             {"role": "user", "content": prompt}
