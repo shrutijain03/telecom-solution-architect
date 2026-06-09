@@ -14,7 +14,6 @@ The system is built using a **dual architecture approach**:
 - 🖥️ **Local Version (RAG + Ollama)** → Document-grounded answers  
 - 🌐 **Deployed Version (Groq API)** → Fast, scalable AI responses  
 
----
 
 ## 🎯 Project Overview
 
