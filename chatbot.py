@@ -401,15 +401,14 @@ You MUST always break sections into new lines using newline characters.
             line = line.strip()
 
             if any(sym in line for sym in ["📘", "🔧", "🏗️", "💡", "🔗"]):
-                formatted.append(f"\n{line}")  # section header
+                formatted_lines.append(f"\n{line}")  # section header
             elif line:
-                formatted.append(f"- {line}")  # force bullet
+                formatted_lines.append(f"- {line}")  # force bullet
 
-        content = "\n".join(formatted)
+        content = "\n".join(formatted_lines)
         
     except Exception as e:
      return f"⚠️ Groq Error: {str(e)}"
-
 
 # ---------------- INPUT ----------------
 default_q = st.session_state.get("prefill", "")
