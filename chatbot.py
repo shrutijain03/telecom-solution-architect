@@ -427,9 +427,7 @@ if default_q and not question:
 # ---------------- HANDLE QUERY ----------------
 if question:
     domain = detect_domain(question)
-    
     ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
-
 
     # ✅ Add user message
     chat.append(("user", question, ts))
@@ -437,48 +435,47 @@ if question:
     if chat_data["name"] == "New Chat":
         chat_data["name"] = question[:30]
 
-    domain = detect_domain(question)
-    selected = domain if domain_filter == "Auto" else domain_filter
+    # ✅ RETRIEVE DOCUMENTS (RAG ✅)
+    docs = retriever.invoke(question)
+    docs = rerank_docs(question, docs)
 
-    # ✅ No DB (Gemini-only mode)
-    
-docs = retriever.get_relevant_documents(question)
-docs = rerank_docs(question, docs)
+    print("DEBUG → docs found:", len(docs))
+    for d in docs:
+        print("SOURCE:", d.metadata)
 
-context = "\n\n".join([doc.page_content[:300] for doc in docs])
-confidence = calculate_confidence(docs)
+    # ✅ BUILD CONTEXT ✅
+    context = "\n\n".join([doc.page_content[:300] for doc in docs])
+    confidence = calculate_confidence(docs)
 
+    # ✅ LOADING UI
+    typing = st.empty()
+    typing.markdown("🔍 Searching telecom knowledge...")
+    typing.markdown(f"🕵🏻 Detected Domain: {domain}")
+    typing.markdown("🧠 Generating architecture-aware answer...")
 
-    # ✅ Loading message
-typing = st.empty()
-typing.markdown("🔍 Searching telecom knowledge...")
-typing.markdown(f"🕵🏻 Detected Domain: {domain}")
-typing.markdown("🧠 Generating architecture-aware answer...")
+    # ✅ PASS CONTEXT TO LLM ✅ (THIS IS THE KEY LINE)
+    answer = generate_answer(question, context)
 
-    # ✅ Generate answer
-answer = generate_answer(question, context)
+    typing.empty()
 
-typing.empty()
+    # ✅ EXTRACT REAL SOURCES ✅
+    sources = []
+    for doc in docs:
+        if "url" in doc.metadata:
+            sources.append(doc.metadata["url"])
+        else:
+            sources.append(doc.metadata.get("file_name", "PDF"))
 
-    # ✅ ✅ GENERATE SOURCES (FIXED POSITION)
-sources = []
-
-for doc in docs:
-    if "url" in doc.metadata:
-        sources.append(f"🌐 {doc.metadata['url']}")
-    else:
-        sources.append(f"📄 {doc.metadata.get('file_name', 'PDF')}")
-
-    # ✅ Add bot response
-chat.append((
-    "bot",
-    {
-        "text": answer,
-        "sources": sources,
-        "confidence": confidence
-    },
-    ts
-))
+    # ✅ ADD BOT RESPONSE
+    chat.append((
+        "bot",
+        {
+            "text": answer,
+            "sources": sources,
+            "confidence": confidence
+        },
+        ts
+    ))
 # ---------------- DISPLAY ----------------
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 for i, (role, msg, ts) in enumerate(chat):
@@ -512,16 +509,16 @@ for i, (role, msg, ts) in enumerate(chat):
 
         # ✅ SOURCES
     if sources:
-        st.markdown("**🔗 Sources:**")
-        for s in sources:
-          st.markdown(f"- {s}")
+            st.markdown("**🔗 Sources:**")
+            for s in sources:
+                st.markdown(f"- {s}")
 
-        st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
         # ✅ BUTTONS INSIDE LOOP ✅
-        col1, col2 = st.columns([1, 1])
+    col1, col2 = st.columns([1, 1])
 
-        with col1:
+    with col1:
             if st.button("🔄Regenerate", key=f"regen_{i}"):
 
                 prev_user_msg = None
@@ -563,4 +560,4 @@ for i, (role, msg, ts) in enumerate(chat):
                 if confidence:
                   st.caption(f"Confidence: {confidence}")
 
-        st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
