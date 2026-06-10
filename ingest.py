@@ -7,9 +7,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from config import PDF_SOURCES, WEB_SOURCES, ENABLE_PDF, ENABLE_WEB
 
-
-# ------------------------------ FOLDER PATHS ------------------------------
+# ------------------------------ CONFIG ------------------------------
 
 DATA_PATHS = {
     "ETOM": "./ETOM",
@@ -21,23 +21,26 @@ DATA_PATHS = {
 
 DB_PATH = "./tmforum_db"
 
-# ✅ ADD WEB LINKS HERE
 WEB_URLS = [
-    #TM FORUM
     "https://www.tmforum.org/oda/open-apis/",
-    "https://www.tmforum.org/open-digital-architecture/open-apis",
+    "https://www.tmforum.org/open-digital-architecture/open-apis/",
     "https://github.com/tmforum-apis",
-    #ServiceNow
- "https://www.servicenow.com/standard/resource-center/data-sheet/ds-telecommunications-network-inventory.html",
- "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html",
-"https://www.servicenow.com/docs/"
+    "https://www.servicenow.com/standard/resource-center/data-sheet/ds-telecommunications-network-inventory.html",
+    "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html",
+    "https://www.servicenow.com/docs/"
 ]
+
+# ✅ PERFORMANCE LIMIT (important)
+MAX_PDF_PAGES = 2000
+
+
 # ------------------------------ LOAD PDF DOCUMENTS ------------------------------
 
 def load_pdf_documents():
     documents = []
+    total_pages = 0
 
-    for domain, path in DATA_PATHS.items():
+    for domain, path in PDF_SOURCES.items():
         print(f"\n📂 Loading from: {domain} ({path})")
 
         try:
@@ -49,34 +52,55 @@ def load_pdf_documents():
         for file in files:
             if file.endswith(".pdf"):
                 file_path = os.path.join(path, file)
-
                 print(f"   📄 Processing: {file}")
 
                 loader = PyPDFLoader(file_path)
                 pages = loader.load()
 
+                # ✅ LIMIT PAGES (performance boost)
                 for page in pages:
-                    page.metadata["source"] = domain
+                    if total_pages >= MAX_PDF_PAGES:
+                        print("⚠️ PDF limit reached, stopping early")
+                        return documents
+
+                    page.metadata["source"] = "pdf"
                     page.metadata["file_name"] = file
 
-                documents.extend(pages)
+                    documents.append(page)
+                    total_pages += 1
 
     return documents
-
 
 # ------------------------------ LOAD WEB DOCUMENTS ------------------------------
 
 def load_web_content(url):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
 
-    # remove scripts/styles
-    for tag in soup(["script", "style"]):
-        tag.extract()
+        response = requests.get(
+            url,
+            timeout=10,              # ✅ FIX hang
+            verify=False,            # ✅ FIX SSL error
+            headers=headers
+        )
 
-    text = soup.get_text(separator=" ")
-    text = text[:20000]
-    return text
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        for tag in soup(["script", "style"]):
+            tag.extract()
+
+        text = soup.get_text(separator=" ")
+
+        # ✅ LIMIT SIZE
+        text = text[:15000]
+
+        return text
+
+    except Exception as e:
+        print(f"❌ Error fetching {url}: {e}")
+        return ""
 
 
 def load_web_documents():
@@ -84,24 +108,24 @@ def load_web_documents():
 
     print("\n🌐 Loading web documents...")
 
-    for url in WEB_URLS:
-        try:
-            print(f"   🌍 Fetching: {url}")
+    for url in WEB_SOURCES:
+        print(f"   🌍 Fetching: {url}")
 
-            content = load_web_content(url)
+        content = load_web_content(url)
 
-            doc = Document(
-                page_content=content,
-                metadata={
-                    "source": "web",
-                    "url": url
-                }
-            )
+        if not content.strip():
+            print(f"⚠️ Skipped empty: {url}")
+            continue
 
-            documents.append(doc)
+        doc = Document(
+            page_content=content,
+            metadata={
+                "source": "web",
+                "url": url
+            }
+        )
 
-        except Exception as e:
-            print(f"❌ Failed: {url} → {e}")
+        documents.append(doc)
 
     return documents
 
@@ -110,8 +134,8 @@ def load_web_documents():
 
 def split_documents(documents):
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=100
+        chunk_size=400,   # ✅ smaller = faster
+        chunk_overlap=50
     )
     return splitter.split_documents(documents)
 
@@ -123,13 +147,15 @@ def create_vector_db(chunks):
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    # ✅ IMPORTANT: delete old DB (for dynamic update)
     vectordb = Chroma(
         persist_directory=DB_PATH,
         embedding_function=embeddings
     )
 
-    vectordb.delete_collection()
+    try:
+        vectordb.delete_collection()
+    except:
+        pass
 
     vectordb = Chroma.from_documents(
         documents=chunks,
@@ -141,6 +167,9 @@ def create_vector_db(chunks):
 
 
 # ------------------------------ MAIN INGEST FUNCTION ------------------------------
+
+
+    # ------------------------------ MAIN INGEST FUNCTION ------------------------------
 
 def run_ingestion():
     print("\n🔄 Starting full ingestion...")
@@ -164,6 +193,7 @@ def run_ingestion():
 
 
 # ------------------------------ MAIN ------------------------------
+
 
 if __name__ == "__main__":
     run_ingestion()
