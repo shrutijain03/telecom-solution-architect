@@ -275,7 +275,9 @@ def load_db():
 )
     return Chroma(persist_directory="./tmforum_db", embedding_function=embeddings)
 
-vectordb = None
+
+vectordb = load_db()
+retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
 @st.cache_resource
 def load_reranker():
@@ -439,48 +441,46 @@ if question:
     selected = domain if domain_filter == "Auto" else domain_filter
 
     # ✅ No DB (Gemini-only mode)
-    docs = []
-    context = ""
-    confidence = "Low"
+    
+docs = retriever.get_relevant_documents(question)
+docs = rerank_docs(question, docs)
+
+context = "\n\n".join([doc.page_content[:300] for doc in docs])
+confidence = calculate_confidence(docs)
+
 
     # ✅ Loading message
-    typing = st.empty()
-    typing.markdown("🔍 Searching telecom knowledge...")
-    typing.markdown(f"🕵🏻 Detected Domain: {domain}")
-    typing.markdown("🧠 Generating architecture-aware answer...")
+typing = st.empty()
+typing.markdown("🔍 Searching telecom knowledge...")
+typing.markdown(f"🕵🏻 Detected Domain: {domain}")
+typing.markdown("🧠 Generating architecture-aware answer...")
 
     # ✅ Generate answer
-    answer = generate_answer(question, context)
+answer = generate_answer(question, context)
 
-    typing.empty()
+typing.empty()
 
     # ✅ ✅ GENERATE SOURCES (FIXED POSITION)
-    sources = []
+sources = []
 
-    if "etom" in question.lower():
-        sources = ["TM Forum eTOM Framework"]
-    elif "sid" in question.lower():
-        sources = ["TM Forum SID Model"]
-    elif "api" in question.lower() or "tmf" in question.lower():
-        sources = ["TMF Open APIs"]
-    elif "servicenow" in question.lower():
-        sources = ["ServiceNow Documentation"]
+for doc in docs:
+    if "url" in doc.metadata:
+        sources.append(f"🌐 {doc.metadata['url']}")
     else:
-        sources = ["Telecom Domain Knowledge (AI Generated)"]
+        sources.append(f"📄 {doc.metadata.get('file_name', 'PDF')}")
 
     # ✅ Add bot response
-    chat.append((
-        "bot",
-        {
-            "text": answer,
-            "sources": sources,
-            "domain": domain
-        },
-        ts
-    ))
+chat.append((
+    "bot",
+    {
+        "text": answer,
+        "sources": sources,
+        "confidence": confidence
+    },
+    ts
+))
 # ---------------- DISPLAY ----------------
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
-
 for i, (role, msg, ts) in enumerate(chat):
 
     if role == "user":
@@ -511,13 +511,11 @@ for i, (role, msg, ts) in enumerate(chat):
      """, unsafe_allow_html=True)
 
         # ✅ SOURCES
-        st.markdown("<br><b>🔗 Sources</b>", unsafe_allow_html=True)
-
+    if sources:
+        st.markdown("**🔗 Sources:**")
         for s in sources:
-              st.markdown(
-        f"<div style='background:{CARD_BG}; color:{TEXT_COLOR}; padding:6px 10px; border-radius:8px; margin:4px 0; font-size:13px; border:1px solid {BORDER};'>✅ {s}</div>",
-        unsafe_allow_html=True
-    )
+          st.markdown(f"- {s}")
+
         st.markdown("</div></div>", unsafe_allow_html=True)
 
         # ✅ BUTTONS INSIDE LOOP ✅
@@ -562,6 +560,7 @@ for i, (role, msg, ts) in enumerate(chat):
 
                 st.rerun()
 
-    
+                if confidence:
+                  st.caption(f"Confidence: {confidence}")
 
         st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
