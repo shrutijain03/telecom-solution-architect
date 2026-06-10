@@ -501,26 +501,27 @@ for i, (role, msg, ts) in enumerate(chat):
 
         # ✅ BOT MESSAGE
         st.markdown(f"""
-    <div class="bot-msg">
-    <div class="bot-bubble">
-        {text}<br>
-        <small>{ts}</small>
-     """, unsafe_allow_html=True)
+        <div class="bot-msg">
+        <div class="bot-bubble">
+            {text}<br>
+            <small>{ts}</small>
+        """, unsafe_allow_html=True)
 
-        # ✅ SOURCES
-    if sources:
+        # ✅ SOURCES — correctly inside the else (bot) block
+        if sources:
             st.markdown("**🔗 Sources:**")
             for s in sources:
                 st.markdown(f"- {s}")
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
+        if confidence:
+            st.caption(f"Confidence: {confidence}")
 
-        # ✅ BUTTONS INSIDE LOOP ✅
-    col1, col2 = st.columns([1, 1])
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
-    with col1:
-            if st.button("🔄Regenerate", key=f"regen_{i}"):
-
+        # ✅ REGENERATE BUTTON — only for bot messages
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("🔄 Regenerate", key=f"regen_{i}"):
                 prev_user_msg = None
 
                 for j in range(i - 1, -1, -1):
@@ -531,33 +532,26 @@ for i, (role, msg, ts) in enumerate(chat):
                 prev_user_msg = prev_user_msg.strip() if isinstance(prev_user_msg, str) else ""
 
                 if prev_user_msg:
+                    # ✅ FIX: actually retrieve docs for regeneration
+                    regen_docs = retriever.invoke(prev_user_msg)
+                    regen_docs = rerank_docs(prev_user_msg, regen_docs)
+                    regen_context = "\n\n".join([d.page_content[:300] for d in regen_docs])
+                    regen_confidence = calculate_confidence(regen_docs)
+                    regen_sources = []
+                    for doc in regen_docs:
+                        if "url" in doc.metadata:
+                            regen_sources.append(doc.metadata["url"])
+                        else:
+                            regen_sources.append(doc.metadata.get("file_name", "PDF"))
 
-                    docs = []
-                    context = ""
-                    sources = []
-                    confidence = "Low"
+                    new_answer = generate_answer(prev_user_msg, regen_context)
+                    regen_ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
 
-                    if docs:
-                        docs = rerank_docs(prev_user_msg, docs)
-                        confidence = calculate_confidence(docs)
-                    else:
-                        docs = []
-
-                context = "\n\n".join([d.page_content[:150] for d in docs]) if docs else ""
-
-                new_answer = generate_answer(prev_user_msg, context)
-
-                ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
-
-                chat.append((
-                "bot",
-                {"text": new_answer, "sources": [], "confidence": confidence},
-                ts
-                ))
-
-                st.rerun()
-
-                if confidence:
-                  st.caption(f"Confidence: {confidence}")
+                    chat.append((
+                        "bot",
+                        {"text": new_answer, "sources": regen_sources, "confidence": regen_confidence},
+                        regen_ts
+                    ))
+                    st.rerun()
 
     st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
