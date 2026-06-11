@@ -1,7 +1,10 @@
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+
 import streamlit as st
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-import os
 from groq import Groq
 import uuid
 from sentence_transformers import CrossEncoder

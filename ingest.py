@@ -1,3 +1,7 @@
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+
 """
 ingest.py — Telecom Co-Pilot Knowledge Ingestion
 Run once manually:   python ingest.py
