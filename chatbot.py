@@ -554,4 +554,8 @@ for i, (role, msg, ts) in enumerate(chat):
                     ))
                     st.rerun()
 
+<<<<<<< HEAD
     st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+=======
+    st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+>>>>>>> 245528c (add vector DB + fix sources)
