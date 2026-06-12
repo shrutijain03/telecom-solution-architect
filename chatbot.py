@@ -277,7 +277,7 @@ def load_db():
 
 
 vectordb = load_db()
-retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+retriever = vectordb.as_retriever(search_kwargs={"k": 6})
 
 @st.cache_resource
 def load_reranker():
@@ -287,7 +287,7 @@ reranker = load_reranker()
 
 def rerank_docs(question, docs):
     if not docs:
-        return docs
+        return docs[:2]
     
     pairs = [(question, doc.page_content) for doc in docs if doc.page_content]
 
@@ -300,7 +300,7 @@ def rerank_docs(question, docs):
     scored_docs.sort(key=lambda x: x[1], reverse=True)
 
     # return top 2
-    return [doc for doc, score in scored_docs[:1]]
+    return [doc for doc, score in scored_docs[:3]]
 
 # ---------------- LLM ----------------
 def generate_answer(question, context):
@@ -438,13 +438,14 @@ if question:
     # ✅ RETRIEVE DOCUMENTS (RAG ✅)
     docs = retriever.invoke(question)
     docs = rerank_docs(question, docs)
+    st.write("Docs found:", len(docs))
 
     print("DEBUG → docs found:", len(docs))
     for d in docs:
         print("SOURCE:", d.metadata)
 
     # ✅ BUILD CONTEXT ✅
-    context = "\n\n".join([doc.page_content[:300] for doc in docs])
+    context = "\n\n".join([doc.page_content[:600] for doc in docs])
     confidence = calculate_confidence(docs)
 
     # ✅ LOADING UI
