@@ -1,177 +1,151 @@
-import os
+"""
+ingest.py
+─────────
+Fetches all WEB_SOURCES, chunks them, and stores in ChromaDB.
+No PDFs — knowledge lives entirely in URLs.
+Run locally before deploying:  python ingest.py
+The resulting ./tmforum_db folder must be committed to GitHub.
+"""
+
 import requests
 from bs4 import BeautifulSoup
+import warnings
+warnings.filterwarnings("ignore")   # suppress SSL/urllib3 noise
 
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from config import PDF_SOURCES, WEB_SOURCES, ENABLE_PDF, ENABLE_WEB
 
-# ------------------------------ CONFIG ------------------------------
+from config import WEB_SOURCES, ENABLE_WEB
 
-DB_PATH = "./tmforum_db"
+# ── Config ──────────────────────────────────────────────────────────────────
+DB_PATH        = "./tmforum_db"
+MAX_CHARS_URL  = 20000   # chars per URL (covers ~5 pages of dense text)
+CHUNK_SIZE     = 500
+CHUNK_OVERLAP  = 60
 
-# ✅ PERFORMANCE LIMIT (important)
-MAX_PDF_PAGES = 2000
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
 
-
-# ------------------------------ LOAD PDF DOCUMENTS ------------------------------
-
-def load_pdf_documents():
-    documents = []
-    total_pages = 0
-
-    for domain, path in PDF_SOURCES.items():
-        print(f"\n📂 Loading from: {domain} ({path})")
-
-        try:
-            files = os.listdir(path)
-        except:
-            print(f"❌ Path not found: {path}")
-            continue
-
-        for file in files:
-            if file.endswith(".pdf"):
-                file_path = os.path.join(path, file)
-                print(f"   📄 Processing: {file}")
-
-                loader = PyPDFLoader(file_path)
-                pages = loader.load()
-
-                # ✅ LIMIT PAGES (performance boost)
-                for page in pages:
-                    if total_pages >= MAX_PDF_PAGES:
-                        print("⚠️ PDF limit reached, stopping early")
-                        return documents
-
-                    page.metadata["source"] = "pdf"
-                    page.metadata["file_name"] = file
-
-                    documents.append(page)
-                    total_pages += 1
-
-    return documents
-
-# ------------------------------ LOAD WEB DOCUMENTS ------------------------------
-
-def load_web_content(url):
+# ── Fetch one URL ────────────────────────────────────────────────────────────
+def fetch_url(url: str) -> str:
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+        resp = requests.get(url, timeout=15, verify=False, headers=HEADERS)
+        resp.raise_for_status()
 
-        response = requests.get(
-            url,
-            timeout=10,              # ✅ FIX hang
-            verify=False,            # ✅ FIX SSL error
-            headers=headers
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # Remove noise tags
+        for tag in soup(["script", "style", "nav", "footer",
+                          "header", "aside", "noscript"]):
+            tag.decompose()
+
+        # Prefer main content blocks
+        main = (
+            soup.find("main") or
+            soup.find("article") or
+            soup.find("div", {"id": "content"}) or
+            soup.find("div", {"class": "content"}) or
+            soup
         )
 
-        soup = BeautifulSoup(response.text, "html.parser")
+        text = main.get_text(separator="\n", strip=True)
 
-        for tag in soup(["script", "style"]):
-            tag.extract()
+        # Collapse blank lines
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        text  = "\n".join(lines)
 
-        text = soup.get_text(separator=" ")
-
-        # ✅ LIMIT SIZE
-        text = text[:15000]
-
-        return text
+        return text[:MAX_CHARS_URL]
 
     except Exception as e:
-        print(f"❌ Error fetching {url}: {e}")
+        print(f"   ❌ Error fetching {url}: {e}")
         return ""
 
 
-def load_web_documents():
+# ── Load all web documents ───────────────────────────────────────────────────
+def load_web_documents() -> list[Document]:
     documents = []
-
-    print("\n🌐 Loading web documents...")
+    print(f"\n🌐 Loading {len(WEB_SOURCES)} web sources...")
 
     for url in WEB_SOURCES:
-        print(f"   🌍 Fetching: {url}")
-
-        content = load_web_content(url)
+        print(f"   🌍 {url}")
+        content = fetch_url(url)
 
         if not content.strip():
-            print(f"⚠️ Skipped empty: {url}")
+            print(f"   ⚠️  Skipped (empty): {url}")
             continue
 
-        doc = Document(
+        documents.append(Document(
             page_content=content,
-            metadata={
-                "source": "web",
-                "url": url
-            }
-        )
-
-        documents.append(doc)
+            metadata={"source": "web", "url": url}
+        ))
+        print(f"   ✅ {len(content):,} chars")
 
     return documents
 
 
-# ------------------------------ SPLIT DOCUMENTS ------------------------------
-
-def split_documents(documents):
+# ── Split into chunks ────────────────────────────────────────────────────────
+def split_documents(documents: list[Document]) -> list[Document]:
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=400,   # ✅ smaller = faster
-        chunk_overlap=50
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=["\n\n", "\n", ". ", " ", ""]
     )
-    return splitter.split_documents(documents)
+    chunks = splitter.split_documents(documents)
+    print(f"\n✂️  Split into {len(chunks)} chunks")
+    return chunks
 
 
-# ------------------------------ CREATE VECTOR DB ------------------------------
-
-def create_vector_db(chunks):
+# ── Build / rebuild ChromaDB ─────────────────────────────────────────────────
+def create_vector_db(chunks: list[Document]):
+    print("\n🧠 Loading embedding model...")
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"}
     )
 
-    vectordb = Chroma(
-        persist_directory=DB_PATH,
-        embedding_function=embeddings
-    )
-
+    # Wipe old collection so we don't accumulate stale chunks
     try:
-        vectordb.delete_collection()
-    except:
+        old_db = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
+        old_db.delete_collection()
+        print("🗑️  Cleared old collection")
+    except Exception:
         pass
 
+    print("📥 Embedding and storing chunks (this takes a minute)...")
     vectordb = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         persist_directory=DB_PATH
     )
 
-    print("✅ Vector DB updated successfully!")
+    count = vectordb._collection.count()
+    print(f"✅ Vector DB ready — {count} vectors stored at {DB_PATH}")
+    return vectordb
 
-    # ------------------------------ MAIN INGEST FUNCTION ------------------------------
 
+# ── Main ─────────────────────────────────────────────────────────────────────
 def run_ingestion():
-    print("\n🔄 Starting full ingestion...")
+    print("\n🔄 Starting web-only ingestion...")
 
-    pdf_docs = load_pdf_documents()
-    web_docs = load_web_documents()
+    if not ENABLE_WEB:
+        print("⚠️  ENABLE_WEB is False in config.py — nothing to ingest.")
+        return
 
-    all_docs = pdf_docs + web_docs
+    docs   = load_web_documents()
+    print(f"\n📄 Total documents loaded: {len(docs)}")
 
-    print(f"\n✅ Total documents loaded: {len(all_docs)}")
-
-    print("🔄 Splitting documents...")
-    chunks = split_documents(all_docs)
-
-    print(f"✅ Created {len(chunks)} chunks")
-
-    print("🔄 Creating vector database...")
+    chunks = split_documents(docs)
     create_vector_db(chunks)
 
     print("✅ Ingestion complete\n")
 
-
-# ------------------------------ MAIN ------------------------------
 
 if __name__ == "__main__":
     run_ingestion()

@@ -1,41 +1,29 @@
-# ==============================================================================
-#  Telecom Co-Pilot — Configuration
-#  Edit ONLY this file to add/remove URL sources. No other file needs changing.
-# ==============================================================================
+# -------------------- WEB-ONLY KNOWLEDGE SOURCES --------------------
+# PDFs removed - knowledge comes entirely from URLs below.
+# Groq is used ONLY for structuring/polishing answers, NOT as knowledge source.
 
-# ── URL SOURCES ────────────────────────────────────────────────────────────────
-# Add any public URL here. The app will scrape these at startup and use the
-# content as context for answering questions.
-#
-# To ADD a source:    append a new dict to the list
-# To REMOVE a source: delete or comment out the entry
-# ──────────────────────────────────────────────────────────────────────────────
-URL_SOURCES = [
-    {
-        "label": "TM Forum Open APIs",
-        "url": "https://www.tmforum.org/oda/open-apis/",
-        "domain": "TMF_APIs"
-    },
-    {
-        "label": "TM Forum Open Digital Architecture",
-        "url": "https://www.tmforum.org/open-digital-architecture/",
-        "domain": "Architecture"
-    },
-    {
-        "label": "TM Forum GitHub APIs",
-        "url": "https://github.com/tmforum-apis",
-        "domain": "TMF_APIs"
-    },
-    {
-        "label": "ServiceNow Telecom Docs",
-        "url": "https://www.servicenow.com/docs/",
-        "domain": "ServiceNow"
-    }
+PDF_SOURCES = {}   # Empty - no PDFs
+ENABLE_PDF  = False
+ENABLE_WEB  = True
+
+WEB_SOURCES = [
+
+    # ── eTOM / Business Process Framework ──────────────────────────────
+    "https://www.tmforum.org/business-process-framework/",
+
+    # ── SID / Information Framework ────────────────────────────────────
+    "https://www.tmforum.org/information-framework-sid/",
+
+    # ── TM Forum Open APIs ──────────────────────────────────────────────
+    "https://www.tmforum.org/oda/open-apis/",
+
+    # ── TM Forum ODA (Open Digital Architecture) ───────────────────────
+    "https://www.tmforum.org/oda/",
+    "https://www.tmforum.org/oda/oda-canvas/",
+
+    # ── OSS/BSS Architecture ────────────────────────────────────────────
+
+    # ── ServiceNow Telecom (TMT) ────────────────────────────────────────
+    "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html",
+    "https://www.servicenow.com/docs",
 ]
-# ── SCRAPING SETTINGS ─────────────────────────────────────────────────────────
-MAX_CHARS_PER_URL = 8000    # Max characters to keep per scraped page
-WEB_TIMEOUT_SECS  = 10      # HTTP timeout per URL
-
-# ── LLM SETTINGS ─────────────────────────────────────────────────────────────
-LLM_MODEL  = "llama-3.3-70b-versatile"
-MAX_TOKENS = 1000

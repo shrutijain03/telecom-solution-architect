@@ -1,585 +1,427 @@
+"""
+chatbot.py
+──────────
+Telecom Solution Architect Co-Pilot
+• Knowledge source : ChromaDB (built from web URLs via ingest.py)
+• Groq / Llama3    : structures and polishes the retrieved content ONLY
+• RAG              : fully enabled with CrossEncoder reranking
+"""
+
 import streamlit as st
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-import time
-import os 
-from groq import Groq
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-import uuid
 from sentence_transformers import CrossEncoder
+from groq import Groq
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import uuid
 
-#--------------------------URL SOURCES-------------------------
-URL_SOURCES = {
-    "network inventory": [
-        "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html"
-    ],
-    "tmf api": [
-        "https://www.tmforum.org/oda/open-apis/"
-    ],
-    "etom": [
-        "https://www.tmforum.org/business-process-framework-etom/"
-    ],
-    "sid": [
-        "https://www.tmforum.org/information-framework-sid/"
-    ],
-    "architecture": [
-        "https://www.tmforum.org/oda/"
-    ]
+# ── Groq client ──────────────────────────────────────────────────────────────
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+# ── URL reference map (for citing sources in replies) ────────────────────────
+DOMAIN_URLS = {
+    "etom":         "https://www.tmforum.org/business-process-framework/",
+    "sid":          "https://www.tmforum.org/information-framework-sid/",
+    "api":          "https://www.tmforum.org/oda/open-apis/",
+    "tmf":          "https://www.tmforum.org/oda/open-apis/",
+    "oda":          "https://www.tmforum.org/oda/",
+    "architecture": "https://www.tmforum.org/oda/oda-component-framework/",
+    "servicenow":   "https://www.servicenow.com/products/telecommunications.html",
+    "network inventory": "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html",
+    "oss":          "https://www.tmforum.org/oda/",
+    "bss":          "https://www.tmforum.org/oda/",
+    "canvas":       "https://www.tmforum.org/oda/oda-canvas/",
 }
-# ---------------- SESSION INIT ----------------
+
+# ── Session state ─────────────────────────────────────────────────────────────
 if "chats" not in st.session_state:
     st.session_state.chats = {}
 
 if "current_chat" not in st.session_state:
-    chat_id = str(uuid.uuid4())
-    st.session_state.current_chat = chat_id
-    st.session_state.chats[chat_id] = {
-        "name": "New Chat",
-        "messages": []
-    }
+    cid = str(uuid.uuid4())
+    st.session_state.current_chat = cid
+    st.session_state.chats[cid] = {"name": "New Chat", "messages": []}
 
-# ---------------- DOMAIN DETECTION ----------------
-def detect_domain(question):
+
+# ── Domain detection ──────────────────────────────────────────────────────────
+DOMAIN_KEYWORDS = {
+    "ETOM":         ["etom", "business process", "fulfillment", "assurance", "billing process",
+                     "operations support", "level 1", "level 2", "level 3"],
+    "SID":          ["sid", "information framework", "data model", "entity", "shared information"],
+    "TMF_APIs":     ["api", "tmf api", "open api", "tmf6", "tmf6", "rest api", "swagger",
+                     "order management api", "product catalog api"],
+    "ODA":          ["oda", "open digital architecture", "canvas", "component", "oda component"],
+    "Architecture": ["architecture", "design", "solution", "oss", "bss", "system design",
+                     "integration", "microservice", "cloud native"],
+    "ServiceNow":   ["servicenow", "snow", "tmt", "itom", "csm", "network inventory",
+                     "telecom service management"],
+}
+
+def detect_domain(question: str) -> str:
     q = question.lower()
-    if "etom" in q or "process" in q:
-        return "ETOM"
-    elif "sid" in q:
-        return "SID"
-    elif "api" in q or "tmf" in q:
-        return "TMF_APIs"
-    elif "architecture" in q:
-        return "Architecture"
-    return "All"
-
- #---------------- CONFIDENCE ----------------
-def calculate_confidence(docs):
-    if not docs:
-        return "Low"
-    elif len(docs) >= 2:
-        return "High"
-    else:
-        return "Medium"
-# ---------------- ARCHITECTURE DETECTION ----------------
-def is_architecture_query(question):
-    keywords = [
-        "design", "architecture", "build", "implement",
-        "solution", "system", "oss", "bss"
-    ]
-    return any(word in question.lower() for word in keywords)
-
-# ---------------- SIDEBAR ----------------
-with st.sidebar:
-
-    # ---------- CHATS ----------
-    st.markdown("### Chats")
-
-    if st.button(" New Chat", use_container_width=True):
-        chat_id = str(uuid.uuid4())
-        st.session_state.current_chat = chat_id
-        st.session_state.chats[chat_id] = {
-            "name": "New Chat",
-            "messages": []
-        }
-        st.rerun()
-
-    st.write("")
-
-    # Chat list
-    for chat_id, chat_data in st.session_state.chats.items():
-        col1, col2 = st.columns([5, 1])
-
-        with col1:
-            if st.button(chat_data["name"], key=f"{chat_id}", use_container_width=True):
-                st.session_state.current_chat = chat_id
-
-        with col2:
-            if st.button("⋮", key=f"menu_{chat_id}"):
-                pass  # optional dropdown later
-
-    st.divider()
-
-    # ---------- APPEARANCE -------
-    st.markdown("### Appearance")
-
-    dark_mode = st.toggle("Dark Mode", value=False)
-
-    st.divider()
-
-    # ---------- DOMAIN ----------
-    st.markdown("### Knowledge Domain")
-
-    domain_filter = st.radio(
-        "",
-        ["Auto", "ETOM", "SID", "TMF_APIs", "Architecture"]
-    )
-
-# ---------------- CHAT POINTER ----------------
-chat_data = st.session_state.chats[st.session_state.current_chat]
-chat = chat_data["messages"]
-
-# ---------------- COLORS ----------------
-if dark_mode:
-    PAGE_BG = "#0f172a"
-    CARD_BG = "#1e293b"
-    TEXT_COLOR = "#f9fafb"
-    SUBTEXT = "#94a3b8"
-    BORDER = "#334155"
-else:
-    PAGE_BG = "#f8fafc"
-    CARD_BG = "#f1f5f9"
-    TEXT_COLOR = "#111827"
-    SUBTEXT = "#6b7280"
-    BORDER = "#e5e7eb"
-
-# ---------------- STYLE ----------------
-st.markdown(f"""
-<style>
-body, .stApp {{
-    background-color: {PAGE_BG};
-    color: {TEXT_COLOR};
-    font-family: "Segoe UI", sans-serif;
-}}
-
-.chat-container {{
-    max-width: 700px;
-    margin: auto;
-}}
-
-.user-msg {{
-    text-align: right;
-}}
-
-.user-bubble {{
-    display: inline-block;
-    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
-    color: white;
-    padding: 10px 14px;
-    border-radius: 18px;
-    max-width: 70%;
-}}
-
-/* ✅ FIX TIMESTAMP INSIDE USER MESSAGE */
-.user-bubble small {{
-    color: #e5e7eb;
-}}
-
-.bot-bubble {{
-    background: {CARD_BG};
-    color: {TEXT_COLOR};
-    padding: 14px;
-    border-radius: 14px;
-    border: 1px solid {BORDER};
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}}
-
-small {{
-    color: {SUBTEXT};
-}}
-
-textarea, input {{
-    background-color: {CARD_BG};
-    color: {TEXT_COLOR};
-    border: 1px solid {BORDER};
-    border-radius: 10px;
-}}
-
-section[data-testid="stSidebar"] {{
-    background-color: {CARD_BG};
-    border-right: 1px solid {BORDER};
-}}
-
-section[data-testid="stSidebar"] * {{
-    color: {TEXT_COLOR};
-}} 
-/* ===== ALL BUTTONS BASE ===== */
-.stButton > button {{
-    border-radius: 6px !important;
-    background-color: """ + ( "#2d3748" if dark_mode else "#f1f5f9" ) + """ !important;
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
-    border: 1px solid """ + ( "#4b5563" if dark_mode else "#e5e7eb" ) + """ !important;
-}}
-
-/* Force text color inside ALL buttons (Streamlit wraps label in <p>) */
-.stButton > button p {{
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
-}}
-
-.stButton > button:hover {{
-    background-color: """ + ( "#4b5563" if dark_mode else "#e2e8f0" ) + """ !important;
-}}
-
-/* ===== SIDEBAR BUTTONS ===== */
-section[data-testid="stSidebar"] .stButton > button {{
-    background-color: """ + ( "#2d3748" if dark_mode else "#e5e7eb" ) + """ !important;
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
-    border: 1px solid """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """ !important;
-    width: 100% !important;
-    text-align: left !important;
-}}
-
-section[data-testid="stSidebar"] .stButton > button p {{
-    color: """ + ( "#f9fafb" if dark_mode else "#111827" ) + """ !important;
-}}
-
-section[data-testid="stSidebar"] .stButton > button:hover {{
-    background-color: """ + ( "#4b5563" if dark_mode else "#d1d5db" ) + """ !important;
-}}
-
-/* ===== SUGGESTED QUERY BUTTONS ===== */
-div[data-testid="column"] .stButton > button {{
-    background: """ + ( "linear-gradient(135deg, #312e81, #4c1d95)" if dark_mode else "linear-gradient(135deg, #ede9fe, #ddd6fe)" ) + """ !important;
-    color: """ + ( "#e0e7ff" if dark_mode else "#4c1d95" ) + """ !important;
-    border: 1px solid """ + ( "#4338ca" if dark_mode else "#a78bfa" ) + """ !important;
-    font-size: 13px !important;
-    white-space: normal !important;
-    height: auto !important;
-    min-height: 52px !important;
-    line-height: 1.4 !important;
-}}
-
-div[data-testid="column"] .stButton > button p {{
-    color: """ + ( "#e0e7ff" if dark_mode else "#4c1d95" ) + """ !important;
-}}
-
-div[data-testid="column"] .stButton > button:hover {{
-    opacity: 0.85 !important;
-}}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------- TITLE ----------------
+    scores = {domain: 0 for domain in DOMAIN_KEYWORDS}
+    for domain, keywords in DOMAIN_KEYWORDS.items():
+        for kw in keywords:
+            if kw in q:
+                scores[domain] += 1
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else "General"
 
 
-st.markdown("""
-<h1 style='text-align: center;'>📡 Telecom Solution Architect Co‑Pilot</h1>
-<p style='text-align: center; color: gray;'>
-AI Assistant for Telecom Architecture, TM Forum & OSS/BSS Design
-</p>
-""", unsafe_allow_html=True)
+def is_architecture_query(question: str) -> bool:
+    keywords = ["design", "architecture", "build", "implement", "solution",
+                "system", "oss", "bss", "how to", "integrate", "deploy"]
+    return any(w in question.lower() for w in keywords)
 
 
-
-# ---------------- SUGGESTED QUERIES ----------------
-if not chat:
-    st.markdown(f"""
-    <p style='text-align:center; font-size:15px; font-weight:500; color:{TEXT_COLOR}; margin-bottom:8px;'>
-        💡 Try a suggested query
-    </p>
-    """, unsafe_allow_html=True)
-
-    suggested = [
-        "Compare eTOM vs ServiceNow data models",
-        "Map TMF APIs to order-to-cash lifecycle",
-        "Design telecom OSS for fault management",
-        "Explain service activation using TMF APIs",
-    ]
-
-    col1, col2 = st.columns(2)
-    for idx, query in enumerate(suggested):
-        col = col1 if idx % 2 == 0 else col2
-        with col:
-            if st.button(query, key=f"suggest_{idx}", use_container_width=True):
-                st.session_state.prefill = query
-                st.rerun()
-
-# ---------------- LOAD DB ----------------
+# ── Load DB & reranker (cached) ───────────────────────────────────────────────
 @st.cache_resource
 def load_db():
     embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"}
+    )
     return Chroma(persist_directory="./tmforum_db", embedding_function=embeddings)
-
-
-vectordb = load_db()
-retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
 @st.cache_resource
 def load_reranker():
     return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
-reranker = load_reranker()
+vectordb  = load_db()
+retriever = vectordb.as_retriever(search_kwargs={"k": 6})
+reranker  = load_reranker()
 
-def rerank_docs(question, docs):
+
+# ── Retrieve + rerank ─────────────────────────────────────────────────────────
+def get_context(question: str) -> tuple[str, list[str]]:
+    """Returns (context_text, list_of_source_urls)."""
+    docs = retriever.invoke(question)
+
     if not docs:
-        return docs
-    
-    pairs = [(question, doc.page_content) for doc in docs if doc.page_content]
+        return "", []
 
+    # Rerank — keep top 3
+    pairs  = [(question, d.page_content) for d in docs]
     scores = reranker.predict(pairs)
+    ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
+    top    = [d for d, _ in ranked[:3]]
 
-    # attach scores to docs
-    scored_docs = list(zip(docs, scores))
+    context = "\n\n---\n\n".join(d.page_content for d in top)
+    sources = list({d.metadata.get("url", "") for d in top if d.metadata.get("url")})
 
-    # sort by score (highest first)
-    scored_docs.sort(key=lambda x: x[1], reverse=True)
+    return context, sources
 
-    # return top 2
-    return [doc for doc, score in scored_docs[:1]]
 
-# ---------------- LLM ----------------
-def generate_answer(question, context):
+# ── Derive extra reference URLs from question keywords ────────────────────────
+def get_reference_urls(question: str) -> list[str]:
+    q = question.lower()
+    urls = []
+    for keyword, url in DOMAIN_URLS.items():
+        if keyword in q:
+            urls.append(url)
+    return list(dict.fromkeys(urls))   # deduplicate, preserve order
+
+
+# ── LLM: structure & polish retrieved context ─────────────────────────────────
+def generate_answer(question: str, context: str, history: list) -> str:
+    """
+    Groq/Llama is instructed to use ONLY the provided context as its
+    knowledge source. It may not add facts from its own training data.
+    """
+
+    # Build conversation history for multi-turn memory (last 4 exchanges)
+    history_text = ""
+    if history:
+        recent = history[-8:]   # last 4 user+bot pairs
+        for role, msg, _ in recent:
+            if role == "user":
+                history_text += f"User: {msg}\n"
+            elif role == "bot":
+                text = msg.get("text", "") if isinstance(msg, dict) else msg
+                history_text += f"Assistant: {text[:300]}\n"
+
     if is_architecture_query(question):
+        system_prompt = """You are a Telecom Solution Architect assistant.
+Your ONLY knowledge source is the CONTEXT provided below — retrieved from TM Forum, ServiceNow, and telecom standards websites.
+Do NOT use your own training knowledge. If the context does not contain enough information, say so clearly.
+Structure and polish the answer using the format requested. Never invent API names, process IDs, or standards not present in the context."""
 
-        prompt = f"""
-You are a Telecom Solution Architect. Always respond using bullet points and clearly separated sections.
+        user_prompt = f"""CONTEXT (retrieved from telecom knowledge base):
+{context if context else "No relevant context was found in the knowledge base for this query."}
 
-Use the context below if available.
-If the context is empty, answer based on your telecom knowledge.
+CONVERSATION HISTORY:
+{history_text}
 
-Context:
-{context}
+QUESTION: {question}
 
-Question:
-{question}
-
-Give output in this format:
+Answer using ONLY the context above. Format your response as:
 
 🏗️ Architecture Components:
-- List key systems (OSS, BSS, APIs, DB, etc.)
+- (list key systems from context)
 
 🔄 Flow:
-- Step-by-step flow of how system works
+- (step-by-step from context)
 
-🔗 APIs:
-- Mention TMF APIs used
+🔗 APIs / Standards:
+- (only APIs/standards mentioned in context)
 
 📊 Integration:
-- How systems connect (ServiceNow, CRM, Network)
+- (how systems connect, from context)
 
-Keep it practical and concise.
-"""
+If the context lacks detail on any section, write "Not covered in retrieved sources" for that section."""
 
     else:
+        system_prompt = """You are a Telecom Solution Architect assistant.
+Your ONLY knowledge source is the CONTEXT provided below — retrieved from TM Forum, ServiceNow, and telecom standards websites.
+Do NOT use your own training knowledge. If the context does not contain enough information, say so clearly.
+Structure and polish the answer into clear sections. Never invent facts not present in the context."""
 
-        prompt = f"""
-You are a Telecom Solution Architect AI. Always respond using bullet points and clearly separated sections.
+        user_prompt = f"""CONTEXT (retrieved from telecom knowledge base):
+{context if context else "No relevant context was found in the knowledge base for this query."}
 
-Use the context below if available.
-If the context is empty, answer based on telecom domain knowledge.
+CONVERSATION HISTORY:
+{history_text}
 
-Context:
-{context}
+QUESTION: {question}
 
-Question:
-{question}
-
-Answer STRICTLY in the following format.
+Answer using ONLY the context above. Format your response as:
 
 📘 Definition:
-- 2–3 clear lines
+- (from context)
 
 🔧 Telecom Context:
-- 2–3 lines with telecom relevance
+- (from context)
 
 🏗️ Architecture Relevance:
-- Explain importance in system design (2–3 lines)
+- (from context)
 
 💡 Example:
-- Real telecom use case
+- (from context if available)
 
-🔗 Related APIs:
-- List relevant APIs
+🔗 Related APIs / Standards:
+- (only those mentioned in context)
 
-IMPORTANT:
-- Write each section in separate lines
-- Do NOT combine sections
-- Each section MUST be written as bullet points starting with "-"
-- Each section MUST contain at least 2 detailed bullet points.
-- Provide detailed explanations, not short summaries.
-You MUST always break sections into new lines using newline characters.
-"""
+If the context lacks detail on any section, write "Not covered in retrieved sources" for that section."""
+
     try:
         response = client.chat.completions.create(
-            model = "llama-3.3-70b-versatile",  
+            model="llama-3.3-70b-versatile",
             messages=[
-            {"role": "system", "content": "You are a telecom solution architect AI. Provide detailed answers with clear sections and bullet points."},
-            {"role": "user", "content": prompt}
-        ],
-            temperature=0.5,
-            max_tokens=800
-    )
-        content = response.choices[0].message.content if response.choices else ""
-
-        if not content:
-           return "⚠️ No response generated."
-
-        import re
-
-        content = content.strip()
-        content = re.sub(r"(📘|🔧|🏗️|💡|🔗)", r"\n\1", content)
-        
-       
-        lines = content.split("\n")
-
-        formatted = []
-
-        for line in lines:
-            line = line.strip()
-
-            if any(sym in line for sym in ["📘", "🔧", "🏗️", "💡", "🔗"]):
-                formatted.append(f"\n{line}")  # section header
-            elif line: 
-                 if line.startswith("-"):
-                  formatted.append(line)
-                 else:
-                  formatted.append(f"- {line}")
-
-        content = "\n".join(formatted)
-        
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_prompt}
+            ],
+            temperature=0.3,    # lower = more faithful to context
+            max_tokens=900
+        )
+        content = response.choices[0].message.content or ""
     except Exception as e:
-     return f"⚠️ Groq Error: {str(e)}"
-    return content
+        return f"⚠️ Groq error: {e}"
 
-# ---------------- INPUT ----------------
-default_q = st.session_state.get("prefill", "")
-question = st.chat_input("Ask telecom architecture...")
+    # Clean up formatting
+    import re
+    content = re.sub(r"(📘|🔧|🏗️|💡|🔗|📊|🔄)", r"\n\1", content).strip()
+    lines, formatted = content.split("\n"), []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if any(sym in line for sym in ["📘","🔧","🏗️","💡","🔗","📊","🔄"]):
+            formatted.append(f"\n{line}")
+        else:
+            formatted.append(line if line.startswith("-") else f"- {line}")
+    return "\n".join(formatted)
 
-if default_q and not question:
-    question = default_q
-    st.session_state.prefill = ""
 
-# ---------------- HANDLE QUERY ----------------
+# ── Sidebar ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 💬 Chats")
+
+    if st.button("＋ New Chat", use_container_width=True):
+        cid = str(uuid.uuid4())
+        st.session_state.current_chat = cid
+        st.session_state.chats[cid]   = {"name": "New Chat", "messages": []}
+        st.rerun()
+
+    st.write("")
+    for cid, cdata in st.session_state.chats.items():
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            if st.button(cdata["name"], key=cid, use_container_width=True):
+                st.session_state.current_chat = cid
+        with col2:
+            st.button("⋮", key=f"menu_{cid}")
+
+    st.divider()
+    st.markdown("### 🎨 Appearance")
+    dark_mode = st.toggle("Dark Mode", value=False)
+    st.divider()
+    st.markdown("### 🗂️ Knowledge Domain")
+    domain_filter = st.radio("", ["Auto", "ETOM", "SID", "TMF_APIs", "ODA", "Architecture", "ServiceNow"])
+    st.divider()
+    st.caption("💡 Answers are grounded in TM Forum & ServiceNow web content. Groq structures the output only.")
+
+
+# ── Theme ─────────────────────────────────────────────────────────────────────
+if dark_mode:
+    PAGE_BG, CARD_BG, TEXT_COLOR = "#0f172a", "#1e293b", "#f9fafb"
+    SUBTEXT,  BORDER             = "#94a3b8",  "#334155"
+else:
+    PAGE_BG, CARD_BG, TEXT_COLOR = "#f8fafc", "#f1f5f9", "#111827"
+    SUBTEXT,  BORDER             = "#6b7280",  "#e5e7eb"
+
+BTN_BG    = "#2d3748" if dark_mode else "#f1f5f9"
+BTN_COLOR = "#f9fafb" if dark_mode else "#111827"
+BTN_BDR   = "#4b5563" if dark_mode else "#e5e7eb"
+BTN_HOV   = "#4b5563" if dark_mode else "#e2e8f0"
+SB_BTN_BG = "#2d3748" if dark_mode else "#e5e7eb"
+SB_BTN_BDR= "#4b5563" if dark_mode else "#d1d5db"
+SB_HOV    = "#4b5563" if dark_mode else "#d1d5db"
+SG_BG     = "linear-gradient(135deg,#312e81,#4c1d95)" if dark_mode else "linear-gradient(135deg,#ede9fe,#ddd6fe)"
+SG_COLOR  = "#e0e7ff" if dark_mode else "#4c1d95"
+SG_BDR    = "#4338ca" if dark_mode else "#a78bfa"
+
+st.markdown(f"""
+<style>
+body, .stApp {{background-color:{PAGE_BG};color:{TEXT_COLOR};font-family:"Segoe UI",sans-serif;}}
+.chat-container {{max-width:720px;margin:auto;}}
+.user-msg {{text-align:right;}}
+.user-bubble {{display:inline-block;background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:white;
+  padding:10px 14px;border-radius:18px;max-width:75%;}}
+.user-bubble small {{color:#e5e7eb;}}
+.bot-bubble {{background:{CARD_BG};color:{TEXT_COLOR};padding:14px;border-radius:14px;
+  border:1px solid {BORDER};box-shadow:0 4px 12px rgba(0,0,0,0.05);}}
+small {{color:{SUBTEXT};}}
+section[data-testid="stSidebar"] {{background-color:{CARD_BG};border-right:1px solid {BORDER};}}
+section[data-testid="stSidebar"] * {{color:{TEXT_COLOR};}}
+.stButton>button {{border-radius:6px!important;background-color:{BTN_BG}!important;
+  color:{BTN_COLOR}!important;border:1px solid {BTN_BDR}!important;}}
+.stButton>button p {{color:{BTN_COLOR}!important;}}
+.stButton>button:hover {{background-color:{BTN_HOV}!important;}}
+section[data-testid="stSidebar"] .stButton>button {{background-color:{SB_BTN_BG}!important;
+  color:{BTN_COLOR}!important;border:1px solid {SB_BTN_BDR}!important;width:100%!important;text-align:left!important;}}
+section[data-testid="stSidebar"] .stButton>button p {{color:{BTN_COLOR}!important;}}
+section[data-testid="stSidebar"] .stButton>button:hover {{background-color:{SB_HOV}!important;}}
+div[data-testid="column"] .stButton>button {{background:{SG_BG}!important;color:{SG_COLOR}!important;
+  border:1px solid {SG_BDR}!important;font-size:13px!important;white-space:normal!important;
+  height:auto!important;min-height:52px!important;line-height:1.4!important;}}
+div[data-testid="column"] .stButton>button p {{color:{SG_COLOR}!important;}}
+div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ── Title ─────────────────────────────────────────────────────────────────────
+st.markdown("""
+<h1 style='text-align:center;'>📡 Telecom Solution Architect Co‑Pilot</h1>
+<p style='text-align:center;color:gray;'>
+AI Assistant for Telecom Architecture · TM Forum · OSS/BSS · ServiceNow<br>
+<small>Answers grounded in live web sources — not LLM guesswork</small>
+</p>
+""", unsafe_allow_html=True)
+
+# ── Chat pointer ──────────────────────────────────────────────────────────────
+chat_data = st.session_state.chats[st.session_state.current_chat]
+chat      = chat_data["messages"]
+
+# ── Suggested queries (only on empty chat) ────────────────────────────────────
+if not chat:
+    st.markdown(f"<p style='text-align:center;font-size:15px;font-weight:500;color:{TEXT_COLOR};margin-bottom:8px;'>💡 Try a suggested query</p>", unsafe_allow_html=True)
+    suggested = [
+        "Explain eTOM Level 2 process for Service Problem Management",
+        "Which TMF Open APIs are used in order-to-cash lifecycle?",
+        "Design an OSS architecture using ODA components",
+        "How does ServiceNow TMT integrate with TM Forum APIs?",
+        "Compare SID data model with ServiceNow CMDB",
+        "What is the ODA Canvas and how does it enable microservices?",
+    ]
+    col1, col2 = st.columns(2)
+    for idx, q in enumerate(suggested):
+        with (col1 if idx % 2 == 0 else col2):
+            if st.button(q, key=f"suggest_{idx}", use_container_width=True):
+                st.session_state.prefill = q
+                st.rerun()
+
+
+# ── Input ─────────────────────────────────────────────────────────────────────
+prefill  = st.session_state.pop("prefill", "")
+question = st.chat_input("Ask telecom architecture...") or (prefill if prefill else None)
+
+# ── Handle query ──────────────────────────────────────────────────────────────
 if question:
-    domain = detect_domain(question)
-    ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
+    domain = domain_filter if domain_filter != "Auto" else detect_domain(question)
+    ts     = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
 
-    # ✅ Add user message
     chat.append(("user", question, ts))
-
     if chat_data["name"] == "New Chat":
-        chat_data["name"] = question[:30]
+        chat_data["name"] = question[:35]
 
-    # ✅ RETRIEVE DOCUMENTS (RAG ✅)
-    #docs = retriever.invoke(question)
-    #docs = rerank_docs(question, docs)
-
-    #for d in docs:
-        #print("SOURCE:", d.metadata)
-
-    # ✅ BUILD CONTEXT ✅
-    context = "Answer using telecom standards from TM Forum and ServiceNow best practices."
-    #context = "\n\n".join([doc.page_content[:300] for doc in docs])
-    #confidence = calculate_confidence(docs)
-
-    # ✅ LOADING UI
+    # ── RAG retrieval ──────────────────────────────────────────────────────
     typing = st.empty()
-    typing.markdown("🔍 Searching telecom knowledge...")
-    typing.markdown(f"🕵🏻 Detected Domain: {domain}")
-    typing.markdown("🧠 Generating architecture-aware answer...")
+    typing.markdown(f"🔍 Searching knowledge base · Domain: **{domain}**")
 
-    # ✅ PASS CONTEXT TO LLM ✅ (THIS IS THE KEY LINE)
-    answer = generate_answer(question, context)
+    context, rag_sources = get_context(question)
+
+    typing.markdown("🧠 Structuring answer with Groq...")
+
+    # ── Generate (Groq polishes retrieved content) ─────────────────────────
+    answer = generate_answer(question, context, chat[:-1])   # exclude current user msg
 
     typing.empty()
 
-    # ✅ EXTRACT REAL SOURCES ✅
-    sources = []
+    # ── Collect all source URLs ────────────────────────────────────────────
+    kw_sources = get_reference_urls(question)
+    all_sources = list(dict.fromkeys(rag_sources + kw_sources))   # RAG sources first
 
-q = question.lower()
+    # Fallback if nothing matched
+    if not all_sources:
+        all_sources = ["https://www.tmforum.org/oda/"]
 
-for key, links in URL_SOURCES.items():
-    if key in q:
-        sources.extend(links)
+    chat.append(("bot", {"text": answer, "sources": all_sources}, ts))
 
-        if not sources:
-         sources = [
-        "https://www.tmforum.org/oda/"
-    ]
-        if sources:
-          st.markdown("**🔗 Sources:**")
-    for s in sources:
-        st.markdown(f"- {s}")
 
-    # ✅ ADD BOT RESPONSE
-    chat.append((
-        "bot",
-        {
-            "text": answer,
-            "sources": sources,
-            #"confidence": confidence
-        },
-        ts
-    ))
-# ---------------- DISPLAY ----------------
+# ── Render chat ───────────────────────────────────────────────────────────────
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+
 for i, (role, msg, ts) in enumerate(chat):
 
     if role == "user":
         st.markdown(f"""
         <div class="user-msg">
-            <div class="user-bubble">
-                {msg}<br><small>{ts}</small>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+          <div class="user-bubble">{msg}<br><small>{ts}</small></div>
+        </div>""", unsafe_allow_html=True)
 
     else:
-        if isinstance(msg, dict):
-            text = msg.get("text", "")
-            sources = msg.get("sources", [])
-            confidence = msg.get("confidence", "")
-        else:
-            text = msg
-            sources = []
-            confidence = ""
+        text    = msg.get("text", "")    if isinstance(msg, dict) else msg
+        sources = msg.get("sources", []) if isinstance(msg, dict) else []
 
-        # ✅ BOT MESSAGE
         st.markdown(f"""
         <div class="bot-msg">
-        <div class="bot-bubble">
-            {text}<br>
-            <small>{ts}</small>
+          <div class="bot-bubble">{text}<br><small>{ts}</small>
         """, unsafe_allow_html=True)
 
-        # ✅ SOURCES — correctly inside the else (bot) block
         if sources:
-            st.markdown("**🔗 Sources:**")
+            st.markdown("**🔗 Sources (retrieved from):**")
             for s in sources:
                 st.markdown(f"- {s}")
 
-        if confidence:
-            st.caption(f"Confidence: {confidence}")
-
         st.markdown("</div></div>", unsafe_allow_html=True)
 
-        # ✅ REGENERATE BUTTON — only for bot messages
-        col1, col2 = st.columns([1, 1])
+        # Regenerate button
+        col1, _ = st.columns([1, 4])
         with col1:
             if st.button("🔄 Regenerate", key=f"regen_{i}"):
-                prev_user_msg = None
-
-                for j in range(i - 1, -1, -1):
-                    if chat[j][0] == "user":
-                        prev_user_msg = chat[j][1]
-                        break
-
-                prev_user_msg = prev_user_msg.strip() if isinstance(prev_user_msg, str) else ""
-
-                if prev_user_msg:
-                    # ✅ FIX: actually retrieve docs for regeneration
-                    regen_docs = retriever.invoke(prev_user_msg)
-                    regen_docs = rerank_docs(prev_user_msg, regen_docs)
-                    regen_context = "\n\n".join([d.page_content[:300] for d in regen_docs])
-                    regen_confidence = calculate_confidence(regen_docs)
-                    regen_sources = []
-                    for doc in regen_docs:
-                        if "url" in doc.metadata:
-                            regen_sources.append(doc.metadata["url"])
-                        else:
-                            regen_sources.append(doc.metadata.get("file_name", "PDF"))
-
-                    new_answer = generate_answer(prev_user_msg, regen_context)
-                    regen_ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
-
-                    chat.append((
-                        "bot",
-                        {"text": new_answer, "sources": regen_sources, "confidence": regen_confidence},
-                        regen_ts
-                    ))
+                prev_q = next(
+                    (chat[j][1] for j in range(i - 1, -1, -1) if chat[j][0] == "user"),
+                    None
+                )
+                if prev_q:
+                    regen_context, regen_sources = get_context(prev_q)
+                    kw_sources   = get_reference_urls(prev_q)
+                    all_regen_sources = list(dict.fromkeys(regen_sources + kw_sources))
+                    new_answer   = generate_answer(prev_q, regen_context, chat[:i])
+                    regen_ts     = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M %p")
+                    chat.append(("bot", {"text": new_answer, "sources": all_regen_sources}, regen_ts))
                     st.rerun()
 
     st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
