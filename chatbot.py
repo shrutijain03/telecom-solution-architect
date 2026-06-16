@@ -122,7 +122,7 @@ def get_context(question: str) -> tuple[str, list[str]]:
     ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
     top    = [d for d, _ in ranked[:3]]
 
-    context = "\n\n---\n\n".join(d.page_content for d in top)
+    context = "\n\n".join(d.page_content for d in top)
     sources = list({d.metadata.get("url", "") for d in top if d.metadata.get("url")})
 
     return context, sources
@@ -140,44 +140,31 @@ def get_reference_urls(question: str) -> list[str]:
 # ── LLM: structure & polish retrieved context ─────────────────────────────────
 def generate_answer(question: str, context: str, history: list) -> str:
 
-    # ✅ limit context
-    context = context[:2500]
+    context = context.replace("\n", " ").replace("\r", " ")
+    context = context[:2000]
 
     prompt = f"""
 You are a Telecom Solution Architect assistant.
 
-Use the CONTEXT below as primary info.
-You MAY use telecom knowledge (TMF, OSS/BSS, ServiceNow) to enhance clarity.
+Use the context below and also your telecom knowledge to give a complete answer.
 
-Do NOT say "Not covered".
-Do NOT hallucinate specific API names.
-
-CONTEXT:
+Context:
 {context}
 
-QUESTION:
+Question:
 {question}
 
-Answer clearly:
-
-If architecture:
-- Components
-- Flow
-- Integration
-
-If concept:
-- Definition
-- Telecom context
-- Example
+Answer clearly and professionally:
+- Explanation
+- Key components
+- Flow (if applicable)
 """
 
     response = client.chat.completions.create(
         model="llama3-8b-8192",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
+        messages=[{"role": "user", "content": prompt}],
         temperature=0.4,
-        max_tokens=500
+        max_tokens=400
     )
 
     return response.choices[0].message.content
