@@ -1,30 +1,51 @@
-from langchain_chroma import Chroma
+"""
+rag_query.py
+────────────
+Test retrieval from Pinecone
+"""
+
+from pinecone import Pinecone
+from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-# Load the embeddings used during ingestion
+from config import PINECONE_API_KEY, PINECONE_INDEX_NAME
+
+
+# ── Load embeddings ─────────────────────────────────────────────────────────
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-# Load the ChromaDB
-vectordb = Chroma(
-    persist_directory="./tmforum_db",
-    embedding_function=embeddings
+# ── Connect Pinecone ────────────────────────────────────────────────────────
+pc = Pinecone(api_key=PINECONE_API_KEY)
+
+vectordb = PineconeVectorStore(
+    index_name=PINECONE_INDEX_NAME,
+    embedding=embeddings
 )
 
-# Create retriever
 retriever = vectordb.as_retriever(search_kwargs={"k": 4})
 
-# Query
+
+# ── Test query ──────────────────────────────────────────────────────────────
 query = "Which eTOM process handles Service Problem Management?"
 
-# ✅ NEW API (LangChain >= 0.2)
 docs = retriever.invoke(query)
 
-print(f"\nQUESTION: {query}\n")
+print(f"\nQUESTION:\n{query}\n")
 
 for i, doc in enumerate(docs, 1):
     print(f"--- Result {i} ---")
-    print(f"Source: {doc.metadata.get('source')} | File: {doc.metadata.get('file_name')}")
+
+    source = doc.metadata.get("source")
+    file_name = doc.metadata.get("file_name")
+    url = doc.metadata.get("url")
+
+    print(f"Source: {source}")
+    if file_name:
+        print(f"File: {file_name}")
+    if url:
+        print(f"URL: {url}")
+
     print(doc.page_content[:500])
     print()

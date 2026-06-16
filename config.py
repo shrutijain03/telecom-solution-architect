@@ -3,7 +3,7 @@
 # Groq is used ONLY for structuring/polishing answers, NOT as knowledge source.
 
 PDF_SOURCES = {}   # Empty - no PDFs
-ENABLE_PDF  = False
+ENABLE_PDF  = True
 ENABLE_WEB  = True
 
 WEB_SOURCES = [
@@ -27,3 +27,6 @@ WEB_SOURCES = [
     "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html",
     "https://www.servicenow.com/docs",
 ]
+
+PINECONE_API_KEY = "pcsk_3keAtS_Rq93c29chSeB1yL8ja1RWjAKvNPWYsVBsJ5QVqJeY5ehHBYAPLSJ5YedWUfXAL2"
+PINECONE_INDEX_NAME = "telecom-copilot"

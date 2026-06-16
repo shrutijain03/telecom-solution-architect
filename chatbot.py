@@ -2,13 +2,21 @@
 chatbot.py
 ──────────
 Telecom Solution Architect Co-Pilot
-• Knowledge source : ChromaDB (built from web URLs via ingest.py)
+• Knowledge source : Pinecone (built from web URLs via ingest.py)
 • Groq / Llama3    : structures and polishes the retrieved content ONLY
 • RAG              : fully enabled with CrossEncoder reranking
 """
-
 import streamlit as st
-from langchain_chroma import Chroma
+import os
+
+# ✅ Load from Streamlit secrets FIRST
+PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
+PINECONE_INDEX_NAME = "telecom-copilot"   # same as ingest.py
+
+# ✅ Then set environment
+os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
+from pinecone import Pinecone
+from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from sentence_transformers import CrossEncoder
 from groq import Groq
@@ -27,7 +35,7 @@ DOMAIN_URLS = {
     "tmf":          "https://www.tmforum.org/oda/open-apis/",
     "oda":          "https://www.tmforum.org/oda/",
     "architecture": "https://www.tmforum.org/oda/oda-component-framework/",
-    "servicenow":   "https://www.servicenow.com/products/telecommunications.html",
+    "servicenow":   "https://www.servicenow.com/docs",
     "network inventory": "https://www.servicenow.com/docs/r/telecom-network-inventory/telecommunications-network-inventory/telecom-network-inventory.html",
     "oss":          "https://www.tmforum.org/oda/",
     "bss":          "https://www.tmforum.org/oda/",
@@ -79,10 +87,17 @@ def is_architecture_query(question: str) -> bool:
 @st.cache_resource
 def load_db():
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"}
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
-    return Chroma(persist_directory="./tmforum_db", embedding_function=embeddings)
+
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+
+    vector_store = PineconeVectorStore(
+        index_name=PINECONE_INDEX_NAME,
+        embedding=embeddings
+    )
+
+    return vector_store
 
 @st.cache_resource
 def load_reranker():
@@ -95,7 +110,7 @@ reranker  = load_reranker()
 
 # ── Retrieve + rerank ─────────────────────────────────────────────────────────
 def get_context(question: str) -> tuple[str, list[str]]:
-    """Returns (context_text, list_of_source_urls)."""
+    """Returns (context_text, list_of_source_urls).""" 
     docs = retriever.invoke(question)
 
     if not docs:

@@ -1,39 +1,53 @@
 """
 ingest.py
 ─────────
-Fetches all WEB_SOURCES, chunks them, and stores in ChromaDB.
-No PDFs — knowledge lives entirely in URLs.
-Run locally before deploying:  python ingest.py
-The resulting ./tmforum_db folder must be committed to GitHub.
-"""
+Loads PDFs + URLs → creates embeddings → stores in Pinecone
 
+Run:
+    python ingest.py
+"""
+import ssl
+import certifi
+ssl._create_default_https_context = ssl.create_default_context(cafile=certifi.where())
+import os
+from config import PINECONE_API_KEY
+os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
+os.environ["REQUESTS_CA_BUNDLE"] = ""
+os.environ["SSL_CERT_FILE"] = ""
 import requests
 from bs4 import BeautifulSoup
 import warnings
-warnings.filterwarnings("ignore")   # suppress SSL/urllib3 noise
+warnings.filterwarnings("ignore")
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_community.document_loaders import PyPDFLoader
 
-from config import WEB_SOURCES, ENABLE_WEB
+from pinecone import Pinecone, ServerlessSpec
+from langchain_pinecone import PineconeVectorStore
+
+from config import (
+    WEB_SOURCES,
+    ENABLE_WEB,
+    ENABLE_PDF,
+    PINECONE_API_KEY,
+    PINECONE_INDEX_NAME
+)
+
 
 # ── Config ──────────────────────────────────────────────────────────────────
-DB_PATH        = "./tmforum_db"
-MAX_CHARS_URL  = 20000   # chars per URL (covers ~5 pages of dense text)
+MAX_CHARS_URL  = 20000
 CHUNK_SIZE     = 500
 CHUNK_OVERLAP  = 60
+PDF_FOLDERS = ["Architecture", "ETOM", "SID", "TMF_APIs"]
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
+    "User-Agent": "Mozilla/5.0"
 }
 
-# ── Fetch one URL ────────────────────────────────────────────────────────────
+
+# ── Fetch URL ───────────────────────────────────────────────────────────────
 def fetch_url(url: str) -> str:
     try:
         resp = requests.get(url, timeout=15, verify=False, headers=HEADERS)
@@ -41,110 +55,150 @@ def fetch_url(url: str) -> str:
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Remove noise tags
-        for tag in soup(["script", "style", "nav", "footer",
-                          "header", "aside", "noscript"]):
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
             tag.decompose()
 
-        # Prefer main content blocks
-        main = (
-            soup.find("main") or
-            soup.find("article") or
-            soup.find("div", {"id": "content"}) or
-            soup.find("div", {"class": "content"}) or
-            soup
-        )
-
-        text = main.get_text(separator="\n", strip=True)
-
-        # Collapse blank lines
-        lines = [l.strip() for l in text.splitlines() if l.strip()]
-        text  = "\n".join(lines)
-
+        text = soup.get_text(separator="\n", strip=True)
         return text[:MAX_CHARS_URL]
 
     except Exception as e:
-        print(f"   ❌ Error fetching {url}: {e}")
+        print(f"❌ URL error {url}: {e}")
         return ""
 
 
-# ── Load all web documents ───────────────────────────────────────────────────
-def load_web_documents() -> list[Document]:
+# ── Load WEB ────────────────────────────────────────────────────────────────
+def load_web_documents():
     documents = []
-    print(f"\n🌐 Loading {len(WEB_SOURCES)} web sources...")
+
+    if not ENABLE_WEB:
+        return documents
+
+    print(f"\n🌐 Loading {len(WEB_SOURCES)} URLs...")
 
     for url in WEB_SOURCES:
-        print(f"   🌍 {url}")
         content = fetch_url(url)
 
         if not content.strip():
-            print(f"   ⚠️  Skipped (empty): {url}")
             continue
 
         documents.append(Document(
             page_content=content,
             metadata={"source": "web", "url": url}
         ))
-        print(f"   ✅ {len(content):,} chars")
+
+        print(f"✅ {url}")
 
     return documents
 
 
-# ── Split into chunks ────────────────────────────────────────────────────────
-def split_documents(documents: list[Document]) -> list[Document]:
+# ── Load PDFs ───────────────────────────────────────────────────────────────
+def load_pdf_documents():
+    documents = []
+
+    if not ENABLE_PDF:
+        return documents
+
+    print("\n📄 Loading PDFs...")
+
+    for folder in PDF_FOLDERS:
+        path = os.path.join("./", folder)
+
+        if not os.path.exists(path):
+            continue
+
+        for file in os.listdir(path):
+            if file.endswith(".pdf"):
+                file_path = os.path.join(path, file)
+
+                try:
+                    loader = PyPDFLoader(file_path)
+                    docs = loader.load()
+
+                    for d in docs:
+                        d.metadata["source"] = "pdf"
+                        d.metadata["file_name"] = file
+
+                    documents.extend(docs)
+
+                    print(f"✅ {file}")
+
+                except Exception as e:
+                    print(f"❌ {file}: {e}")
+
+    return documents
+
+
+# ── Split ───────────────────────────────────────────────────────────────────
+def split_documents(documents):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", ". ", " ", ""]
+        chunk_overlap=CHUNK_OVERLAP
     )
     chunks = splitter.split_documents(documents)
-    print(f"\n✂️  Split into {len(chunks)} chunks")
+
+    print(f"\n✂️ {len(chunks)} chunks created")
     return chunks
 
 
-# ── Build / rebuild ChromaDB ─────────────────────────────────────────────────
-def create_vector_db(chunks: list[Document]):
-    print("\n🧠 Loading embedding model...")
+# ── Pinecone store ──────────────────────────────────────────────────────────
+def create_vector_db(chunks):
+
+    print("\n🧠 Loading embeddings...")
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"}
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    # Wipe old collection so we don't accumulate stale chunks
-    try:
-        old_db = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
-        old_db.delete_collection()
-        print("🗑️  Cleared old collection")
-    except Exception:
-        pass
+    import urllib3
+    urllib3.disable_warnings()
 
-    print("📥 Embedding and storing chunks (this takes a minute)...")
-    vectordb = Chroma.from_documents(
+    pc = Pinecone(
+    api_key=PINECONE_API_KEY,
+    ssl_verify=False   # 🔥 force bypass SSL
+)
+
+
+    # Create index if not exists
+    if PINECONE_INDEX_NAME not in pc.list_indexes().names():
+        print("🆕 Creating index...")
+        pc.create_index(
+            name=PINECONE_INDEX_NAME,
+            dimension=384,
+            metric="cosine",
+            spec=ServerlessSpec(
+                cloud="aws",
+                region="us-east-1"
+            )
+        )
+
+    print("📥 Uploading to Pinecone...")
+
+    PineconeVectorStore.from_documents(
         documents=chunks,
         embedding=embeddings,
-        persist_directory=DB_PATH
+        index_name=PINECONE_INDEX_NAME
     )
 
-    count = vectordb._collection.count()
-    print(f"✅ Vector DB ready — {count} vectors stored at {DB_PATH}")
-    return vectordb
+    print("✅ Pinecone ready!")
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# ── Main ────────────────────────────────────────────────────────────────────
 def run_ingestion():
-    print("\n🔄 Starting web-only ingestion...")
+    print("\n🔄 Starting ingestion...")
 
-    if not ENABLE_WEB:
-        print("⚠️  ENABLE_WEB is False in config.py — nothing to ingest.")
+    documents = []
+    documents.extend(load_web_documents())
+    documents.extend(load_pdf_documents())
+
+    print(f"\n📄 Total documents: {len(documents)}")
+
+    if not documents:
+        print("❌ No data found")
         return
 
-    docs   = load_web_documents()
-    print(f"\n📄 Total documents loaded: {len(docs)}")
-
-    chunks = split_documents(docs)
+    chunks = split_documents(documents)
     create_vector_db(chunks)
 
-    print("✅ Ingestion complete\n")
+    print("✅ DONE\n")
 
 
 if __name__ == "__main__":
