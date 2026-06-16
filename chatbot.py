@@ -104,7 +104,7 @@ def load_reranker():
     return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 vectordb  = load_db()
-retriever = vectordb.as_retriever(search_kwargs={"k": 8})
+retriever = vectordb.as_retriever(search_kwargs={"k": 4})
 reranker  = load_reranker()
 
 
@@ -140,79 +140,46 @@ def get_reference_urls(question: str) -> list[str]:
 
 # ── LLM: structure & polish retrieved context ─────────────────────────────────
 def generate_answer(question: str, context: str, history: list) -> str:
-    """
-    Hybrid RAG answer generation: uses both retrieved context and telecom knowledge.
-    """
+
+    context = context[:4000]  # 🔥 important fix
 
     prompt = f"""
 You are a Telecom Solution Architect assistant.
 
-Use the retrieved CONTEXT as your primary source of truth.
-
-However:
-- If the context is incomplete, you MAY use your telecom knowledge (TM Forum, OSS/BSS, ServiceNow, ODA)
-- Always prioritize context-based information first
-- Expand answers to make them clear, structured, and architect-level
+Use the CONTEXT as the primary source.
+You may use telecom knowledge (TMF, OSS/BSS, ServiceNow) to improve clarity if needed.
 
 Rules:
-- Do NOT hallucinate specific APIs or TMF numbers not in context
-- Avoid saying "Not covered in retrieved sources"
-- If context is weak, provide best-practice telecom explanation
+- Do not invent APIs or TMF IDs
+- Avoid saying "Not covered"
+- Always give a complete answer
 
 CONTEXT:
-{context if context else "Limited context available. Use telecom best practices."}
+{context}
 
 QUESTION:
 {question}
 
 ---
 
-If it is an architecture question:
+Answer clearly and in a structured way:
 
-🏗️ Architecture Components:
-- list systems
+If architecture question:
+- Architecture Components
+- Flow
+- Integration
 
-🔄 Flow:
-- step-by-step explanation
-
-🔗 APIs / Standards:
-- relevant APIs / TMF standards
-
-📊 Integration:
-- how systems interact
-
----
-
-If it is a concept question:
-
-📘 Definition:
-- clear explanation
-
-🔧 Telecom Context:
-- telecom usage
-
-🏗️ Architecture Relevance:
-- role in OSS/BSS
-
-💡 Example:
-- real-world telecom example
-
-🔗 Related APIs / Standards:
-- relevant frameworks
-
----
-
-Make the answer:
-- clear
-- slightly detailed
-- structured
+If concept question:
+- Definition
+- Telecom Context
+- Example
 """
 
     response = client.chat.completions.create(
         model="llama3-8b-8192",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5,
-        max_tokens=800
+        max_tokens=600
     )
 
     return response.choices[0].message.content
