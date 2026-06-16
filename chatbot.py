@@ -137,22 +137,20 @@ def get_reference_urls(question: str) -> list[str]:
             urls.append(url)
     return list(dict.fromkeys(urls))   # deduplicate, preserve order
 
-
 # ── LLM: structure & polish retrieved context ─────────────────────────────────
 def generate_answer(question: str, context: str, history: list) -> str:
 
-    context = context[:4000]  # 🔥 important fix
+    # ✅ limit context
+    context = context[:2500]
 
     prompt = f"""
 You are a Telecom Solution Architect assistant.
 
-Use the CONTEXT as the primary source.
-You may use telecom knowledge (TMF, OSS/BSS, ServiceNow) to improve clarity if needed.
+Use the CONTEXT below as primary info.
+You MAY use telecom knowledge (TMF, OSS/BSS, ServiceNow) to enhance clarity.
 
-Rules:
-- Do not invent APIs or TMF IDs
-- Avoid saying "Not covered"
-- Always give a complete answer
+Do NOT say "Not covered".
+Do NOT hallucinate specific API names.
 
 CONTEXT:
 {context}
@@ -160,44 +158,29 @@ CONTEXT:
 QUESTION:
 {question}
 
----
+Answer clearly:
 
-Answer clearly and in a structured way:
-
-If architecture question:
-- Architecture Components
+If architecture:
+- Components
 - Flow
 - Integration
 
-If concept question:
+If concept:
 - Definition
-- Telecom Context
+- Telecom context
 - Example
 """
 
     response = client.chat.completions.create(
         model="llama3-8b-8192",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=600
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.4,
+        max_tokens=500
     )
 
     return response.choices[0].message.content
-
-    # Clean up formatting
-    import re
-    content = re.sub(r"(📘|🔧|🏗️|💡|🔗|📊|🔄)", r"\n\1", content).strip()
-    lines, formatted = content.split("\n"), []
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        if any(sym in line for sym in ["📘","🔧","🏗️","💡","🔗","📊","🔄"]):
-            formatted.append(f"\n{line}")
-        else:
-            formatted.append(line if line.startswith("-") else f"- {line}")
-    return "\n".join(formatted)
-
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
