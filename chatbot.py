@@ -104,7 +104,7 @@ def load_reranker():
     return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 vectordb  = load_db()
-retriever = vectordb.as_retriever(search_kwargs={"k": 6})
+retriever = vectordb.as_retriever(search_kwargs={"k": 8})
 reranker  = load_reranker()
 
 
@@ -141,97 +141,81 @@ def get_reference_urls(question: str) -> list[str]:
 # ── LLM: structure & polish retrieved context ─────────────────────────────────
 def generate_answer(question: str, context: str, history: list) -> str:
     """
-    Groq/Llama is instructed to use ONLY the provided context as its
-    knowledge source. It may not add facts from its own training data.
+    Hybrid RAG answer generation: uses both retrieved context and telecom knowledge.
     """
 
-    # Build conversation history for multi-turn memory (last 4 exchanges)
-    history_text = ""
-    if history:
-        recent = history[-8:]   # last 4 user+bot pairs
-        for role, msg, _ in recent:
-            if role == "user":
-                history_text += f"User: {msg}\n"
-            elif role == "bot":
-                text = msg.get("text", "") if isinstance(msg, dict) else msg
-                history_text += f"Assistant: {text[:300]}\n"
+    prompt = f"""
+You are a Telecom Solution Architect assistant.
 
-    if is_architecture_query(question):
-        system_prompt = """You are a Telecom Solution Architect assistant.
-Your ONLY knowledge source is the CONTEXT provided below — retrieved from TM Forum, ServiceNow, and telecom standards websites.
-Do NOT use your own training knowledge. If the context does not contain enough information, say so clearly.
-Structure and polish the answer using the format requested. Never invent API names, process IDs, or standards not present in the context."""
+Use the retrieved CONTEXT as your primary source of truth.
 
-        user_prompt = f"""CONTEXT (retrieved from telecom knowledge base):
-{context if context else "No relevant context was found in the knowledge base for this query."}
+However:
+- If the context is incomplete, you MAY use your telecom knowledge (TM Forum, OSS/BSS, ServiceNow, ODA)
+- Always prioritize context-based information first
+- Expand answers to make them clear, structured, and architect-level
 
-CONVERSATION HISTORY:
-{history_text}
+Rules:
+- Do NOT hallucinate specific APIs or TMF numbers not in context
+- Avoid saying "Not covered in retrieved sources"
+- If context is weak, provide best-practice telecom explanation
 
-QUESTION: {question}
+CONTEXT:
+{context if context else "Limited context available. Use telecom best practices."}
 
-Answer using ONLY the context above. Format your response as:
+QUESTION:
+{question}
+
+---
+
+If it is an architecture question:
 
 🏗️ Architecture Components:
-- (list key systems from context)
+- list systems
 
 🔄 Flow:
-- (step-by-step from context)
+- step-by-step explanation
 
 🔗 APIs / Standards:
-- (only APIs/standards mentioned in context)
+- relevant APIs / TMF standards
 
 📊 Integration:
-- (how systems connect, from context)
+- how systems interact
 
-If the context lacks detail on any section, write "Not covered in retrieved sources" for that section."""
+---
 
-    else:
-        system_prompt = """You are a Telecom Solution Architect assistant.
-Your ONLY knowledge source is the CONTEXT provided below — retrieved from TM Forum, ServiceNow, and telecom standards websites.
-Do NOT use your own training knowledge. If the context does not contain enough information, say so clearly.
-Structure and polish the answer into clear sections. Never invent facts not present in the context."""
-
-        user_prompt = f"""CONTEXT (retrieved from telecom knowledge base):
-{context if context else "No relevant context was found in the knowledge base for this query."}
-
-CONVERSATION HISTORY:
-{history_text}
-
-QUESTION: {question}
-
-Answer using ONLY the context above. Format your response as:
+If it is a concept question:
 
 📘 Definition:
-- (from context)
+- clear explanation
 
 🔧 Telecom Context:
-- (from context)
+- telecom usage
 
 🏗️ Architecture Relevance:
-- (from context)
+- role in OSS/BSS
 
 💡 Example:
-- (from context if available)
+- real-world telecom example
 
 🔗 Related APIs / Standards:
-- (only those mentioned in context)
+- relevant frameworks
 
-If the context lacks detail on any section, write "Not covered in retrieved sources" for that section."""
+---
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt}
-            ],
-            temperature=0.3,    # lower = more faithful to context
-            max_tokens=900
-        )
-        content = response.choices[0].message.content or ""
-    except Exception as e:
-        return f"⚠️ Groq error: {e}"
+Make the answer:
+- clear
+- slightly detailed
+- structured
+"""
+
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.5,
+        max_tokens=800
+    )
+
+    return response.choices[0].message.content
 
     # Clean up formatting
     import re
@@ -325,14 +309,11 @@ div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
 </style>
 """, unsafe_allow_html=True)
 
-
 # ── Title ─────────────────────────────────────────────────────────────────────
 st.markdown("""
 <h1 style='text-align:center;'>📡 Telecom Solution Architect Co‑Pilot</h1>
 <p style='text-align:center;color:gray;'>
 AI Assistant for Telecom Architecture · TM Forum · OSS/BSS · ServiceNow<br>
-<small>Answers grounded in live web sources — not LLM guesswork</small>
-</p>
 """, unsafe_allow_html=True)
 
 # ── Chat pointer ──────────────────────────────────────────────────────────────
