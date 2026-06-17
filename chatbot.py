@@ -109,7 +109,6 @@ reranker  = load_reranker()
 
 
 # ── Retrieve + rerank ─────────────────────────────────────────────────────────
-# ── Retrieve + rerank ─────────────────────────────────────────────────────────
 def get_context(question: str) -> tuple[str, list[str]]:
     """Returns (context_text, list_of_source_urls)."""
 
@@ -185,9 +184,11 @@ def generate_answer(question: str, context: str, history: list) -> str:
     context = context[:1800]
 
     prompt = f"""
+
 You are a Telecom Solution Architect.
 
-Answer the question clearly using the context and telecom knowledge.
+Use the context below as the primary source.
+You may expand using telecom best practices.
 
 Context:
 {context}
@@ -195,9 +196,16 @@ Context:
 Question:
 {question}
 
-Provide a clear and complete answer.
-Use the CONTEXT explicitly.
-If useful, quote or refer to it.
+Provide a structured answer:
+
+- Definition / Overview
+- Architecture Components (systems involved)
+- Flow (step-by-step if applicable)
+- APIs / Standards (mention TMF APIs if relevant)
+- Example (real telecom use case)
+
+Keep it clear and professional.
+
 """
 
     try:
