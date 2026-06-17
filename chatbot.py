@@ -221,14 +221,6 @@ First, understand the type of question:
 
 You MUST provide:
 
-1. Architecture Layers (ALL layers)
-2. Component Details (what each layer contains)
-3. End-to-End Flow (MANDATORY)
-   - Explain how a request moves through the system step-by-step
-4. Component Interaction
-   - How layers communicate with each other
-5. Real Telecom Example (MANDATORY).
-
 If the question is about architecture or design:
 
 You MUST design it using telecom standards and frameworks such as:
