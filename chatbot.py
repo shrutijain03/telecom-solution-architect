@@ -146,14 +146,15 @@ def get_context(question: str) -> tuple[str, list[str]]:
                 score += 0.3
 
         # ✅ Boost keyword match
-        if any(word in doc.page_content.lower() for word in question.lower().split()):
-            score += 0.2
+        if any(word in doc.page_content.lower() for word in question.lower().split()) or \
+     any(term in doc.metadata.get("file_name","").lower() for term in question.lower().split()):
+          score += 0.2
 
         # ✅ Filter top chunks
-        if score > 0.3:
+        if score > 0.2:
             top_docs.append(doc)
 
-        if len(top_docs) == 2:
+        if len(top_docs) == 3:
             break
 
     # ✅ fallback
@@ -202,13 +203,16 @@ def generate_answer(question: str, context: str, history: list) -> str:
     context = context[:2000]
 
     prompt = f"""
-You are a Telecom Solution Architect assistant.
+You are a Telecom Solution Architect.
 
-IMPORTANT:
-- Use ONLY the information present in the CONTEXT
-- Do NOT invent APIs, frameworks, or details
-- If something is NOT found in context, say:
-  "Not clearly specified in retrieved sources"
+Use the CONTEXT as the main source.
+
+However:
+- You MAY use general telecom knowledge to explain concepts
+- BUT do NOT invent specific APIs or frameworks
+
+If context is partial:
+- Expand explanation using best practices
 
 CONTEXT:
 {context}
@@ -216,18 +220,12 @@ CONTEXT:
 QUESTION:
 {question}
 
-Answer in structured format:
-
-1. Definition / Overview
-2. Key Components (only if present in context)
-3. Flow (only if clearly found)
-4. APIs / Standards (only if mentioned)
-
-IMPORTANT:
-- Be accurate over being complete
-- Do NOT guess missing details
+Answer clearly:
+1. Definition
+2. Components
+3. Flow (if possible)
+4. APIs / Standards
 """
-
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
