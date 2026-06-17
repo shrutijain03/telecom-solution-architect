@@ -103,78 +103,36 @@ def load_db():
 def load_reranker():
     return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
+@st.cache_resource
+def load_db():
+    return PineconeVectorStore(...)
+
 vectordb  = load_db()
 retriever = vectordb.as_retriever(search_kwargs={"k": 3})
-reranker  = load_reranker()
 
-# ── Retrieve + rerank ─────────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def cached_context(question: str):
+    return get_context(question)
+
 def get_context(question: str) -> tuple[str, list[str]]:
-    """Returns (context_text, list_of_source_urls)."""
-
-    # ✅ Step 1: Refine query
-    refined_query = f"""
-    Telecom TM Forum OSS BSS context:
-    {question}
-    Focus on:
-    - TMF APIs
-    - eTOM processes
-    - ServiceNow integration
-    - telecom architecture
-    """
-
-    # ✅ Step 2: Retrieve documents
-    docs = retriever.invoke(refined_query)
+    docs = retriever.invoke(question)
 
     if not docs:
         return "", []
 
-    # ✅ Step 3: Rerank
-    pairs = [(refined_query, d.page_content) for d in docs]
-    scores = reranker.predict(pairs)
+    # ✅ FAST: take top docs directly (no reranker)
+    top_docs = docs[:3]
 
-    # ✅ ✅ YOU WERE MISSING THIS LINE
-    ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
-
-    top_docs = []
-
-    # ✅ Step 4: Filtering loop (correct indentation)
-    for doc, score in ranked:
-
-        # ✅ Boost PDF priority
-        if any(term in question.lower() for term in ["gb921", "tmf070", "blueprint"]):
-            if doc.metadata.get("file_name"):
-                score += 0.3
-
-        # ✅ Boost keyword match
-        if any(word in doc.page_content.lower() for word in question.lower().split()) or \
-     any(term in doc.metadata.get("file_name","").lower() for term in question.lower().split()):
-          score += 0.2
-
-        # ✅ Filter top chunks
-        top_docs = [doc for doc, _ in ranked[:6]]
-
-    # ✅ Step 5: Build context
     context = "\n\n".join(d.page_content for d in top_docs)
-    context = context.replace(" .", ".")
 
-    # ✅ DEBUG
-    print("\n--- SELECTED SOURCES ---")
-    for d in top_docs:
-        print(d.metadata)
-
-    # ✅ Step 6: Extract sources
     sources = []
-
     for d in top_docs:
         if d.metadata.get("url"):
             sources.append(d.metadata["url"])
         elif d.metadata.get("file_name"):
             sources.append(f"PDF: {d.metadata['file_name']}")
 
-    print("\n--- Retrieved context preview ---")
-    print(context[:300])
-
-    return context, sources
+    return context, list(dict.fromkeys(sources))
 
 # ── Derive extra reference URLs from question keywords ────────────────────────
 def get_reference_urls(question: str) -> list[str]:
@@ -193,7 +151,7 @@ def generate_answer(question: str, context: str, history: list) -> str:
     # ✅ CLEAN + LIMIT CONTEXT
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:4000]
+    context = context[:3000]
 
     prompt = f"""
 You are a Telecom Solution Architect AI.
@@ -297,7 +255,7 @@ Now generate the best possible answer.
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
-            max_tokens=300
+            max_tokens=250
         )
 
         return response.choices[0].message.content
@@ -429,7 +387,8 @@ if question:
     typing = st.empty()
     typing.markdown(f"🔍 Searching knowledge base · Domain: **{domain}**")
 
-    context, rag_sources = get_context(question)
+    context, rag_sources = cached_context(question)
+
 
     typing.markdown("🧠 Structuring answer with Groq...")
 
