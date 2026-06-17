@@ -227,24 +227,6 @@ When answering:
 ✅ Add WHEN to use each system  
 ✅ Avoid generic textbook definitions  
 
----
-
-FORMAT (VERY IMPORTANT):
-
-1. Overview
-- Short explanation of both concepts
-
-2. Key Differences (MANDATORY)
-- Explicit comparison (SID vs CMDB style)
-- Use bullet or table-style explanation
-
-3. Role in Architecture
-- Where each fits in OSS/BSS / system architecture
-
-4. Practical Example (VERY IMPORTANT)
-- Explain how both are used together in real telecom system
-
----
 
 RULES:
 
