@@ -1,29 +1,18 @@
 """
 ingest.py
-─────────
+---------
 Loads PDFs + URLs → creates embeddings → stores in Pinecone
-
-Run:
-    python ingest.py
 """
-import ssl
-import certifi
-ssl._create_default_https_context = ssl.create_default_context(cafile=certifi.where())
+
 import os
 from config import PINECONE_API_KEY
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
-os.environ["REQUESTS_CA_BUNDLE"] = ""
-os.environ["SSL_CERT_FILE"] = ""
 import requests
 from bs4 import BeautifulSoup
-import warnings
-warnings.filterwarnings("ignore")
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader
-
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
 
@@ -35,142 +24,101 @@ from config import (
     PINECONE_INDEX_NAME
 )
 
-
-# ── Config ──────────────────────────────────────────────────────────────────
-MAX_CHARS_URL  = 20000
-CHUNK_SIZE     = 500
-CHUNK_OVERLAP  = 60
+# ✅ config
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 60
 PDF_FOLDERS = ["Architecture", "ETOM", "SID", "TMF_APIs"]
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
-
-
-# ── Fetch URL ───────────────────────────────────────────────────────────────
-def fetch_url(url: str) -> str:
+# ── Load Web ─────────────────────────────────────────────────────────
+def fetch_url(url):
     try:
-        resp = requests.get(url, timeout=15, verify=False, headers=HEADERS)
-        resp.raise_for_status()
-
+        resp = requests.get(url, timeout=10)
         soup = BeautifulSoup(resp.text, "html.parser")
-
-        for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
-            tag.decompose()
-
-        text = soup.get_text(separator="\n", strip=True)
-        return text[:MAX_CHARS_URL]
-
-    except Exception as e:
-        print(f"❌ URL error {url}: {e}")
+        text = soup.get_text(separator=" ", strip=True)
+        return text
+    except:
         return ""
 
-
-# ── Load WEB ────────────────────────────────────────────────────────────────
 def load_web_documents():
     documents = []
 
-    if not ENABLE_WEB:
-        return documents
-
-    print(f"\n🌐 Loading {len(WEB_SOURCES)} URLs...")
-
     for url in WEB_SOURCES:
-        content = fetch_url(url)
-
-        if not content.strip():
-            continue
-
-        documents.append(Document(
-            page_content=content,
-            metadata={"source": "web", "url": url}
-        ))
-
-        print(f"✅ {url}")
-
+        text = fetch_url(url)
+        if text:
+            documents.append(
+                Document(
+                    page_content=text,
+                    metadata={
+                        "url": url,
+                        "source": "web"
+                    }
+                )
+            )
     return documents
 
-
-# ── Load PDFs ───────────────────────────────────────────────────────────────
+# ── Load PDFs ─────────────────────────────────────────────────────────
 def load_pdf_documents():
     documents = []
 
-    if not ENABLE_PDF:
-        return documents
-
-    print("\n📄 Loading PDFs...")
-
     for folder in PDF_FOLDERS:
-        path = os.path.join("./", folder)
-
-        if not os.path.exists(path):
+        if not os.path.exists(folder):
             continue
 
-        for file in os.listdir(path):
+        for file in os.listdir(folder):
             if file.endswith(".pdf"):
-                file_path = os.path.join(path, file)
+                path = os.path.join(folder, file)
 
-                try:
-                    loader = PyPDFLoader(file_path)
-                    docs = loader.load()
+                loader = PyPDFLoader(path)
+                import re
 
-                    for d in docs:
-                        d.metadata["source"] = "pdf"
-                        d.metadata["file_name"] = file
+                pages = loader.load()
 
-                    documents.extend(docs)
+                for page in pages:
+                  text = page.page_content
 
-                    print(f"✅ {file}")
+    # ✅ CLEAN PDF TEXT
+                  text = re.sub(r"\s+", " ", text)         # remove extra spaces
+                  text = re.sub(r"\n", " ", text)          # remove line breaks
+                  text = text.strip()
 
-                except Exception as e:
-                    print(f"❌ {file}: {e}")
+                if len(text) < 50:
+                  continue   # skip useless chunks
+
+    documents.append(
+        Document(
+            page_content=text,
+            metadata={
+                "file_name": file,
+                "source": "pdf"
+            }
+        )
+    )
 
     return documents
 
-
-# ── Split ───────────────────────────────────────────────────────────────────
+# ── Split ─────────────────────────────────────────────────────────────
 def split_documents(documents):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP
     )
-    chunks = splitter.split_documents(documents)
+    return splitter.split_documents(documents)
 
-    print(f"\n✂️ {len(chunks)} chunks created")
-    return chunks
-
-
-# ── Pinecone store ──────────────────────────────────────────────────────────
+# ── Store in Pinecone ────────────────────────────────────────────────
 def create_vector_db(chunks):
-
-    print("\n🧠 Loading embeddings...")
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    import urllib3
-    urllib3.disable_warnings()
+    pc = Pinecone(api_key=PINECONE_API_KEY)
 
-    pc = Pinecone(
-    api_key=PINECONE_API_KEY,
-    ssl_verify=False   # 🔥 force bypass SSL
-)
-
-
-    # Create index if not exists
     if PINECONE_INDEX_NAME not in pc.list_indexes().names():
-        print("🆕 Creating index...")
         pc.create_index(
             name=PINECONE_INDEX_NAME,
             dimension=384,
             metric="cosine",
-            spec=ServerlessSpec(
-                cloud="aws",
-                region="us-east-1"
-            )
+            spec=ServerlessSpec(cloud="aws", region="us-east-1")
         )
-
-    print("📥 Uploading to Pinecone...")
 
     PineconeVectorStore.from_documents(
         documents=chunks,
@@ -178,28 +126,27 @@ def create_vector_db(chunks):
         index_name=PINECONE_INDEX_NAME
     )
 
-    print("✅ Pinecone ready!")
-
-
-# ── Main ────────────────────────────────────────────────────────────────────
+# ── Main ─────────────────────────────────────────────────────────────
 def run_ingestion():
-    print("\n🔄 Starting ingestion...")
+    print("🔄 Starting ingestion...")
 
-    documents = []
-    documents.extend(load_web_documents())
-    documents.extend(load_pdf_documents())
+    docs = []
 
-    print(f"\n📄 Total documents: {len(documents)}")
+    if ENABLE_WEB:
+        docs.extend(load_web_documents())
 
-    if not documents:
-        print("❌ No data found")
-        return
+    if ENABLE_PDF:
+        docs.extend(load_pdf_documents())
 
-    chunks = split_documents(documents)
+    print(f"✅ Loaded {len(docs)} documents")
+
+    chunks = split_documents(docs)
+
+    print(f"✅ Created {len(chunks)} chunks")
+
     create_vector_db(chunks)
 
-    print("✅ DONE\n")
-
+    print("✅ Ingestion complete!")
 
 if __name__ == "__main__":
     run_ingestion()

@@ -7,14 +7,11 @@ __pycache__/
 .Python
 *.egg-info/
 
-# Vector DB — never commit, too large for GitHub
+# Vector DB — never commit (you are using Pinecone ✅)
 tmforum_db/
 chroma_db/
 *.sqlite3
 *.bin
-
-# PDF source files
-*.pdf
 
 # Secrets
 .env
@@ -24,5 +21,3 @@ secrets.toml
 # OS
 .DS_Store
 Thumbs.db
-
-tmforum_db/
