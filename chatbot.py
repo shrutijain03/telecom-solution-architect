@@ -107,12 +107,11 @@ vectordb  = load_db()
 retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 reranker  = load_reranker()
 
-
 # ── Retrieve + rerank ─────────────────────────────────────────────────────────
 def get_context(question: str) -> tuple[str, list[str]]:
     """Returns (context_text, list_of_source_urls)."""
 
-    # ✅ Step 1: Refine query for better retrieval
+    # ✅ Step 1: Refine query
     refined_query = f"""
     Telecom TM Forum OSS BSS context:
     {question}
@@ -129,36 +128,36 @@ def get_context(question: str) -> tuple[str, list[str]]:
     if not docs:
         return "", []
 
-    # ✅ Step 3: Rerank using CrossEncoder
+    # ✅ Step 3: Rerank
     pairs = [(refined_query, d.page_content) for d in docs]
     scores = reranker.predict(pairs)
-
-    # ✅ Step 4: Sort by score
     ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
 
-    # ✅ Step 5: Filter high-quality chunks
+    # ✅ Step 4: Filter top relevant docs
     top_docs = []
     for doc, score in ranked:
-        if score > 0.3:   # threshold
+        if score > 0.3:
             top_docs.append(doc)
-        if len(top_docs) == 2:  # keep top 2 only
+        if len(top_docs) == 2:
             break
 
-    # ✅ fallback (in case all scores are low)
+    # ✅ fallback if no good scores
     if not top_docs:
         top_docs = [d for d, _ in ranked[:2]]
 
-    # ✅ Step 6: Build clean context
+    # ✅ Step 5: Build context
     context = "\n\n".join(d.page_content for d in top_docs)
 
-    # ✅ Step 7: Extract URLs
-    sources = list({
-        d.metadata.get("url", "")
-        for d in top_docs
-        if d.metadata.get("url")
-    })
+    # ✅ Step 6: Extract sources (URL + PDF)
+    sources = []
 
-    # DEBUG (optional)
+    for d in top_docs:
+        if d.metadata.get("url"):
+            sources.append(d.metadata["url"])
+        elif d.metadata.get("file_name"):
+            sources.append(f"PDF: {d.metadata['file_name']}")
+
+    # ✅ DEBUG (optional)
     print("\n--- Retrieved context preview ---")
     print(context[:300])
 
@@ -204,8 +203,14 @@ Provide a structured answer:
 - APIs / Standards (mention TMF APIs if relevant)
 - Example (real telecom use case)
 
-Keep it clear and professional.
+Use the CONTEXT explicitly.
 
+If possible:
+- Refer to specific terms from the context
+- Mention TM Forum concepts or artifacts found in the context
+
+Do NOT generate completely generic answers.
+Keep it clear and professional.
 """
 
     try:
