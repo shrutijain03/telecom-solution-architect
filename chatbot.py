@@ -151,18 +151,11 @@ def get_context(question: str) -> tuple[str, list[str]]:
           score += 0.2
 
         # ✅ Filter top chunks
-        if score > 0.2:
-            top_docs.append(doc)
-
-        if len(top_docs) == 5:
-            break
-
-    # ✅ fallback
-    if not top_docs:
-        top_docs = [d for d, _ in ranked[:2]]
+        top_docs = [doc for doc, _ in ranked[:6]]
 
     # ✅ Step 5: Build context
     context = "\n\n".join(d.page_content for d in top_docs)
+    context = context.replace(" .", ".")
 
     # ✅ DEBUG
     print("\n--- SELECTED SOURCES ---")
@@ -270,8 +263,9 @@ STYLE GUIDELINES:
 ✅ Think like a solution architect  
 
 ---
+If any section (flow, interaction, or example) is not clearly found in context,
+you MUST infer it based on standard telecom architecture principles.
 Now generate the best possible answer.
-
 """
 
     try:
