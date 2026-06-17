@@ -203,9 +203,9 @@ def generate_answer(question: str, context: str, history: list) -> str:
     context = context[:2500]
 
     prompt = f"""
-You are a Senior Telecom Solution Architect.
+You are a Telecom Solution Architect AI.
 
-Use the CONTEXT as your primary reference, but think and respond like an architect designing real systems.
+Your job is to answer based on the QUESTION TYPE.
 
 QUESTION:
 {question}
@@ -217,30 +217,51 @@ CONTEXT:
 
 INSTRUCTIONS:
 
-You must NOT just describe — you must analyze as well
+First, understand the type of question:
 
-When answering:
+1. If it is:
+   - "What is"
+   - "Explain"
+   → Give clear explanation (simple + structured)
 
-✅ Explain PURPOSE of each system  
-✅ Highlight DIFFERENCES clearly (if asked) 
-✅ Show ARCHITECTURE PERSPECTIVE (who does what)  
-✅ Add WHEN to use each system  
-✅ Avoid generic textbook definitions
-✅ Add examples as well
+2. If it is:
+   - "Architecture"
+   - "Design"
+   → Provide layered/system architecture explanation
 
+3. If it is:
+   - "Compare"
+   - "Difference"
+   - "Differentiate"
+   → Provide comparison table or structured differences
+
+4. If it is:
+   - "Use cases"
+   - "Application"
+   → Provide bullet list of use cases
+
+---
 RULES:
+✅ ONLY compare when the question asks for comparison
+✅ Always start with 2-3 lines INTRODUCTION
+✅ Always end with a 1-2 line CONCLUSION
+✅ DO NOT introduce unrelated concepts  
+✅ DO NOT force tables unnecessarily  
+✅ Keep answer relevant to the question  
+✅ Use context as main reference  
 
-❌ Do NOT say "not clearly specified"
-❌ Do NOT stay shallow
-❌ Do NOT list generic definitions
-❌ Do NOT leave any part of the answer incomplete
+---
+STYLE GUIDELINES:
 
-✅ Always provide reasoning
-✅ Always compare when multiple systems are involved
-✅ Think like a system designer, not a textbook
-✅ Complete the answer fully and every part of it
+✅ Keep answers clear and structured  
+✅ Avoid generic textbook language  
+✅ Think like a solution architect  
+
+---
+Now generate the best possible answer.
 
 """
+
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
