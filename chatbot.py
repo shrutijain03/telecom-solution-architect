@@ -200,19 +200,17 @@ def generate_answer(question: str, context: str, history: list) -> str:
     # ✅ CLEAN + LIMIT CONTEXT
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:2000]
+    context = context[:2500]
 
     prompt = f"""
 You are a Telecom Solution Architect.
 
-Use the CONTEXT as the main source.
+Use the CONTEXT as the primary source of truth.
 
-However:
-- You MAY use general telecom knowledge to explain concepts
-- BUT do NOT invent specific APIs or frameworks
-
-If context is partial:
-- Expand explanation using best practices
+HOWEVER:
+- If context is incomplete, you MAY use telecom knowledge to explain concepts
+- Do NOT invent specific API names or standards not present in context
+- You can expand explanations, but must stay consistent with context
 
 CONTEXT:
 {context}
@@ -220,11 +218,16 @@ CONTEXT:
 QUESTION:
 {question}
 
-Answer clearly:
-1. Definition
-2. Components
-3. Flow (if possible)
-4. APIs / Standards
+Answer in structured format:
+
+1. Definition / Overview
+2. Key Components (expand if needed)
+3. Flow (can be explained using best practices)
+4. APIs / Standards (only if confident)
+
+IMPORTANT:
+- Avoid "Not specified" unless nothing is available
+- Prefer meaningful explanation over empty sections
 """
     try:
         response = client.chat.completions.create(
