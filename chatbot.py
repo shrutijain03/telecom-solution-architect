@@ -217,26 +217,28 @@ CONTEXT:
 
 INSTRUCTIONS:
 
-You must NOT just describe — you must analyze and compare.
+You must NOT just describe — you must analyze as well
 
 When answering:
 
 ✅ Explain PURPOSE of each system  
-✅ Highlight DIFFERENCES clearly  
+✅ Highlight DIFFERENCES clearly (if asked) 
 ✅ Show ARCHITECTURE PERSPECTIVE (who does what)  
 ✅ Add WHEN to use each system  
-✅ Avoid generic textbook definitions  
-
+✅ Avoid generic textbook definitions
+✅ Add examples as well
 
 RULES:
 
 ❌ Do NOT say "not clearly specified"
 ❌ Do NOT stay shallow
 ❌ Do NOT list generic definitions
+❌ Do NOT leave the answer incomplete
 
 ✅ Always provide reasoning
 ✅ Always compare when multiple systems are involved
 ✅ Think like a system designer, not a textbook
+
 
 """
     try:
