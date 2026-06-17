@@ -229,10 +229,24 @@ You MUST provide:
    - How layers communicate with each other
 5. Real Telecom Example (MANDATORY)
 
+Answer must include:
+- At least 4–5 layers or components
+- End-to-end flow
+- Interaction explanation
+
 IMPORTANT:
-- Do NOT stop at listing layers
-- Always include flow and interaction
-- Always complete the design
+Use CONTEXT as primary source.
+
+However:
+If some parts of architecture (Flow, Interaction, Example) are missing,
+you MUST complete them using standard telecom architecture principles.
+
+- DO NOT leave sections incomplete
+- DO NOT stop mid-answer
+- Provide a COMPLETE architecture answer
+- Flow is MANDATORY for architecture questions.
+- If not fully present in context, infer logically.
+
 
 3. If it is:
    - "Compare"
@@ -263,8 +277,7 @@ STYLE GUIDELINES:
 ✅ Think like a solution architect  
 
 ---
-If any section (flow, interaction, or example) is not clearly found in context,
-you MUST infer it based on standard telecom architecture principles.
+
 Now generate the best possible answer.
 """
 
