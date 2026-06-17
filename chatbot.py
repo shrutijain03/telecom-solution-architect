@@ -208,9 +208,9 @@ Now generate a COMPLETE and well-structured answer.
 """
 
     try:
-        context = context[:2200]
+        
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.1-8b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
             max_tokens=450
