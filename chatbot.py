@@ -142,7 +142,7 @@ def generate_answer(question: str, context: str, history: list) -> str:
     # ✅ CLEAN + LIMIT CONTEXT
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:2000]
+    context = context[:2200]
 
     prompt = f"""
 You are a Telecom Solution Architect AI.
@@ -187,7 +187,7 @@ Instead, use telecom-specific architecture such as:
 - OSS/BSS system components
 - Service Orchestration layers
 - Resource / Network layers
-All this should be in under 150 words
+
 ---
 
 MANDATORY:
@@ -242,11 +242,12 @@ Now generate the best possible answer.
 """
 
     try:
+        context = context[:2200]
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
-            max_tokens=250
+            max_tokens=450
         )
 
         return response.choices[0].message.content
