@@ -131,24 +131,44 @@ def get_context(question: str) -> tuple[str, list[str]]:
     # ✅ Step 3: Rerank
     pairs = [(refined_query, d.page_content) for d in docs]
     scores = reranker.predict(pairs)
+
+    # ✅ ✅ YOU WERE MISSING THIS LINE
     ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
 
-    # ✅ Step 4: Filter top relevant docs
     top_docs = []
+
+    # ✅ Step 4: Filtering loop (correct indentation)
     for doc, score in ranked:
+
+        # ✅ Boost PDF priority
+        if any(term in question.lower() for term in ["gb921", "tmf070", "blueprint"]):
+            if doc.metadata.get("file_name"):
+                score += 0.3
+
+        # ✅ Boost keyword match
+        if any(word in doc.page_content.lower() for word in question.lower().split()):
+            score += 0.2
+
+        # ✅ Filter top chunks
         if score > 0.3:
             top_docs.append(doc)
+
         if len(top_docs) == 2:
             break
 
-    # ✅ fallback if no good scores
+    # ✅ fallback
     if not top_docs:
         top_docs = [d for d, _ in ranked[:2]]
 
     # ✅ Step 5: Build context
     context = "\n\n".join(d.page_content for d in top_docs)
 
-    # ✅ Step 6: Extract sources (URL + PDF)
+    # ✅ DEBUG
+    print("\n--- SELECTED SOURCES ---")
+    for d in top_docs:
+        print(d.metadata)
+
+    # ✅ Step 6: Extract sources
     sources = []
 
     for d in top_docs:
@@ -157,7 +177,6 @@ def get_context(question: str) -> tuple[str, list[str]]:
         elif d.metadata.get("file_name"):
             sources.append(f"PDF: {d.metadata['file_name']}")
 
-    # ✅ DEBUG (optional)
     print("\n--- Retrieved context preview ---")
     print(context[:300])
 
