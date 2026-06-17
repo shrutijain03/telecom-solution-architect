@@ -18,7 +18,6 @@ os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
 from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from sentence_transformers import CrossEncoder
 from groq import Groq
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -99,14 +98,6 @@ def load_db():
 
     return vector_store
 
-@st.cache_resource
-def load_reranker():
-    return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-
-@st.cache_resource
-def load_db():
-    return PineconeVectorStore(...)
-
 vectordb  = load_db()
 retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
@@ -151,7 +142,7 @@ def generate_answer(question: str, context: str, history: list) -> str:
     # ✅ CLEAN + LIMIT CONTEXT
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:3000]
+    context = context[:2000]
 
     prompt = f"""
 You are a Telecom Solution Architect AI.
@@ -444,7 +435,7 @@ for i, (role, msg, ts) in enumerate(chat):
                     None
                 )
                 if prev_q:
-                    regen_context, regen_sources = get_context(prev_q)
+                    regen_context, regen_sources = cached_context(prev_q)
                     kw_sources   = get_reference_urls(prev_q)
                     all_regen_sources = list(dict.fromkeys(regen_sources + kw_sources))
                     new_answer   = generate_answer(prev_q, regen_context, chat[:i])
