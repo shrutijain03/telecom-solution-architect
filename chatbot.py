@@ -224,10 +224,22 @@ First, understand the type of question:
    - "Explain"
    → Give clear explanation (simple + structured)
 
-2. If it is:
-   - "Architecture"
-   - "Design"
-   → Provide layered/system architecture explanation
+2. If the question is about architecture or design:
+
+You MUST provide:
+
+1. Architecture Layers (ALL layers)
+2. Component Details (what each layer contains)
+3. End-to-End Flow (MANDATORY)
+   - Explain how a request moves through the system step-by-step
+4. Component Interaction
+   - How layers communicate with each other
+5. Real Telecom Example (MANDATORY)
+
+IMPORTANT:
+- Do NOT stop at listing layers
+- Always include flow and interaction
+- Always complete the design
 
 3. If it is:
    - "Compare"
