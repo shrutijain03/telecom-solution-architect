@@ -203,37 +203,65 @@ def generate_answer(question: str, context: str, history: list) -> str:
     context = context[:2500]
 
     prompt = f"""
-You are a Telecom Solution Architect.
+You are a Senior Telecom Solution Architect.
 
-Use the CONTEXT as the primary source of truth.
-
-HOWEVER:
-- If context is incomplete, you MAY use telecom knowledge to explain concepts
-- Do NOT invent specific API names or standards not present in context
-- You can expand explanations, but must stay consistent with context
-
-CONTEXT:
-{context}
+Use the CONTEXT as your primary reference, but think and respond like an architect designing real systems.
 
 QUESTION:
 {question}
 
-Answer in structured format:
+CONTEXT:
+{context}
 
-1. Definition / Overview
-2. Key Components (expand if needed)
-3. Flow (can be explained using best practices)
-4. APIs / Standards (only if confident)
+---
 
-IMPORTANT:
-- Avoid "Not specified" unless nothing is available
-- Prefer meaningful explanation over empty sections
+INSTRUCTIONS:
+
+You must NOT just describe — you must analyze and compare.
+
+When answering:
+
+✅ Explain PURPOSE of each system  
+✅ Highlight DIFFERENCES clearly  
+✅ Show ARCHITECTURE PERSPECTIVE (who does what)  
+✅ Add WHEN to use each system  
+✅ Avoid generic textbook definitions  
+
+---
+
+FORMAT (VERY IMPORTANT):
+
+1. Overview
+- Short explanation of both concepts
+
+2. Key Differences (MANDATORY)
+- Explicit comparison (SID vs CMDB style)
+- Use bullet or table-style explanation
+
+3. Role in Architecture
+- Where each fits in OSS/BSS / system architecture
+
+4. Practical Example (VERY IMPORTANT)
+- Explain how both are used together in real telecom system
+
+---
+
+RULES:
+
+❌ Do NOT say "not clearly specified"
+❌ Do NOT stay shallow
+❌ Do NOT list generic definitions
+
+✅ Always provide reasoning
+✅ Always compare when multiple systems are involved
+✅ Think like a system designer, not a textbook
+
 """
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.4,
+            temperature=0.5,
             max_tokens=300
         )
 
