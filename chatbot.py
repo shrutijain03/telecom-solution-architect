@@ -199,37 +199,33 @@ def generate_answer(question: str, context: str, history: list) -> str:
     # ✅ CLEAN + LIMIT CONTEXT
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:1800]
+    context = context[:2000]
 
     prompt = f"""
+You are a Telecom Solution Architect assistant.
 
-You are a Telecom Solution Architect.
+IMPORTANT:
+- Use ONLY the information present in the CONTEXT
+- Do NOT invent APIs, frameworks, or details
+- If something is NOT found in context, say:
+  "Not clearly specified in retrieved sources"
 
-Use the context below as the primary source.
-You may expand using telecom best practices.
-
-Context:
+CONTEXT:
 {context}
 
-Question:
+QUESTION:
 {question}
 
-Provide a structured answer:
+Answer in structured format:
 
-- Definition / Overview
-- Architecture Components (systems involved)
-- Flow (step-by-step if applicable)
-- APIs / Standards (mention TMF APIs if relevant)
-- Example (real telecom use case)
+1. Definition / Overview
+2. Key Components (only if present in context)
+3. Flow (only if clearly found)
+4. APIs / Standards (only if mentioned)
 
-Use the CONTEXT explicitly.
-
-If possible:
-- Refer to specific terms from the context
-- Mention TM Forum concepts or artifacts found in the context
-
-Do NOT generate completely generic answers.
-Keep it clear and professional.
+IMPORTANT:
+- Be accurate over being complete
+- Do NOT guess missing details
 """
 
     try:
@@ -237,7 +233,7 @@ Keep it clear and professional.
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.4,
-            max_tokens=350
+            max_tokens=300
         )
 
         return response.choices[0].message.content
