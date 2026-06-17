@@ -227,25 +227,44 @@ You MUST provide:
    - Explain how a request moves through the system step-by-step
 4. Component Interaction
    - How layers communicate with each other
-5. Real Telecom Example (MANDATORY)
+5. Real Telecom Example (MANDATORY).
 
-Answer must include:
-- At least 4–5 layers or components
-- End-to-end flow
-- Interaction explanation
+If the question is about architecture or design:
+
+You MUST design it using telecom standards and frameworks such as:
+- TM Forum (eTOM, SID)
+- ODA (Open Digital Architecture)
+
+DO NOT use generic software architecture layers like:
+- Presentation Layer
+- Application Layer
+- Data Layer
+
+Instead, use telecom-specific architecture such as:
+
+- ODA Functional Domains (Core Commerce, Production, Engagement, etc.)
+- OSS/BSS system components
+- Service Orchestration layers
+- Resource / Network layers
+All this should be in under 150 words
+---
+
+MANDATORY:
+
+1. Proper Telecom Architecture Components
+2. End-to-End Flow (telecom example)
+3. Component Interaction
+4. Real telecom use-case (e.g. service activation, network issue)
+
+---
 
 IMPORTANT:
-Use CONTEXT as primary source.
 
-However:
-If some parts of architecture (Flow, Interaction, Example) are missing,
-you MUST complete them using standard telecom architecture principles.
+If context is incomplete:
+→ COMPLETE the design using telecom best practices
 
-- DO NOT leave sections incomplete
-- DO NOT stop mid-answer
-- Provide a COMPLETE architecture answer
-- Flow is MANDATORY for architecture questions.
-- If not fully present in context, infer logically.
+DO NOT fall back to generic IT architecture
+DO NOT give partial answers
 
 
 3. If it is:
