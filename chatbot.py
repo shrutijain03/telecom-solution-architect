@@ -154,7 +154,7 @@ def get_context(question: str) -> tuple[str, list[str]]:
         if score > 0.2:
             top_docs.append(doc)
 
-        if len(top_docs) == 3:
+        if len(top_docs) == 5:
             break
 
     # ✅ fallback
@@ -200,7 +200,7 @@ def generate_answer(question: str, context: str, history: list) -> str:
     # ✅ CLEAN + LIMIT CONTEXT
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:2500]
+    context = context[:4000]
 
     prompt = f"""
 You are a Telecom Solution Architect AI.
