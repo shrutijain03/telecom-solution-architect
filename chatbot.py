@@ -140,13 +140,17 @@ def get_reference_urls(question: str) -> list[str]:
 # ── LLM: structure & polish retrieved context ─────────────────────────────────
 def generate_answer(question: str, context: str, history: list) -> str:
 
-    context = context.replace("\n", " ").replace("\r", " ")
-    context = context[:2000]
+    import re
+
+    # ✅ CLEAN + LIMIT CONTEXT
+    context = re.sub(r"\s+", " ", context)
+    context = re.sub(r"[^\x00-\x7F]+", " ", context)
+    context = context[:1800]
 
     prompt = f"""
-You are a Telecom Solution Architect assistant.
+You are a Telecom Solution Architect.
 
-Use the context below and also your telecom knowledge to give a complete answer.
+Answer the question clearly using the context and telecom knowledge.
 
 Context:
 {context}
@@ -154,20 +158,21 @@ Context:
 Question:
 {question}
 
-Answer clearly and professionally:
-- Explanation
-- Key components
-- Flow (if applicable)
+Provide a clear and complete answer.
 """
 
-    response = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
-        max_tokens=400
-    )
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+            max_tokens=350
+        )
 
-    return response.choices[0].message.content
+        return response.choices[0].message.content
+
+    except Exception:
+        return "⚠️ Unable to generate response. Please try a simpler query."
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
