@@ -233,12 +233,12 @@ RULES:
 ❌ Do NOT say "not clearly specified"
 ❌ Do NOT stay shallow
 ❌ Do NOT list generic definitions
-❌ Do NOT leave the answer incomplete
+❌ Do NOT leave any part of the answer incomplete
 
 ✅ Always provide reasoning
 ✅ Always compare when multiple systems are involved
 ✅ Think like a system designer, not a textbook
-
+✅ Complete the answer fully and every part of it
 
 """
     try:
