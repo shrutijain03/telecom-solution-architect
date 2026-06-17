@@ -104,29 +104,66 @@ def load_reranker():
     return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 vectordb  = load_db()
-retriever = vectordb.as_retriever(search_kwargs={"k": 4})
+retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 reranker  = load_reranker()
 
 
 # ── Retrieve + rerank ─────────────────────────────────────────────────────────
+# ── Retrieve + rerank ─────────────────────────────────────────────────────────
 def get_context(question: str) -> tuple[str, list[str]]:
-    """Returns (context_text, list_of_source_urls).""" 
-    docs = retriever.invoke(question)
+    """Returns (context_text, list_of_source_urls)."""
+
+    # ✅ Step 1: Refine query for better retrieval
+    refined_query = f"""
+    Telecom TM Forum OSS BSS context:
+    {question}
+    Focus on:
+    - TMF APIs
+    - eTOM processes
+    - ServiceNow integration
+    - telecom architecture
+    """
+
+    # ✅ Step 2: Retrieve documents
+    docs = retriever.invoke(refined_query)
 
     if not docs:
         return "", []
 
-    # Rerank — keep top 3
-    pairs  = [(question, d.page_content) for d in docs]
+    # ✅ Step 3: Rerank using CrossEncoder
+    pairs = [(refined_query, d.page_content) for d in docs]
     scores = reranker.predict(pairs)
-    ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
-    top    = [d for d, _ in ranked[:3]]
 
-    context = "\n\n".join(d.page_content for d in top)
-    sources = list({d.metadata.get("url", "") for d in top if d.metadata.get("url")})
+    # ✅ Step 4: Sort by score
+    ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
+
+    # ✅ Step 5: Filter high-quality chunks
+    top_docs = []
+    for doc, score in ranked:
+        if score > 0.3:   # threshold
+            top_docs.append(doc)
+        if len(top_docs) == 2:  # keep top 2 only
+            break
+
+    # ✅ fallback (in case all scores are low)
+    if not top_docs:
+        top_docs = [d for d, _ in ranked[:2]]
+
+    # ✅ Step 6: Build clean context
+    context = "\n\n".join(d.page_content for d in top_docs)
+
+    # ✅ Step 7: Extract URLs
+    sources = list({
+        d.metadata.get("url", "")
+        for d in top_docs
+        if d.metadata.get("url")
+    })
+
+    # DEBUG (optional)
+    print("\n--- Retrieved context preview ---")
+    print(context[:300])
 
     return context, sources
-
 
 # ── Derive extra reference URLs from question keywords ────────────────────────
 def get_reference_urls(question: str) -> list[str]:
@@ -159,6 +196,8 @@ Question:
 {question}
 
 Provide a clear and complete answer.
+Use the CONTEXT explicitly.
+If useful, quote or refer to it.
 """
 
     try:
