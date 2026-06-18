@@ -184,7 +184,20 @@ TASK:
 
 Write a complete, well-structured answer using markdown headers and bullet
 points. Keep it focused — around 300-400 words — but make sure every section
-you start is finished. Do not cut off mid-sentence."""
+you start is finished. Do not cut off mid-sentence.
+
+IMPORTANT:
+- Where possible, refer to TM Forum concepts or frameworks from the context
+- Prefer phrases like:
+  "According to TM Forum..."
+  "The framework defines..."
+- Avoid generic statements like:
+  "improves efficiency"
+  "enhances collaboration"
+- Be specific to telecom systems
+- Only state relationships or roles if you are confident from context.
+- Do not infer incorrect relationships (e.g., SID being a process model).
+"""
 
     try:
         response = client.chat.completions.create(
