@@ -2,9 +2,9 @@
 chatbot.py
 ──────────
 Telecom Solution Architect Co-Pilot
-• Knowledge source : Pinecone (built from web URLs via ingest.py)
+• Knowledge source : Pinecone (built from web URLs + PDFs via ingest.py)
 • Groq / Llama3    : structures and polishes the retrieved content ONLY
-• RAG              : fully enabled with CrossEncoder reranking
+• RAG              : retrieval from Pinecone, top-3 docs
 """
 import streamlit as st
 import os
@@ -25,6 +25,7 @@ import uuid
 
 # ── Groq client ──────────────────────────────────────────────────────────────
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 # ── URL reference map (for citing sources in replies) ────────────────────────
 DOMAIN_URLS = {
@@ -56,7 +57,7 @@ DOMAIN_KEYWORDS = {
     "ETOM":         ["etom", "business process", "fulfillment", "assurance", "billing process",
                      "operations support", "level 1", "level 2", "level 3"],
     "SID":          ["sid", "information framework", "data model", "entity", "shared information"],
-    "TMF_APIs":     ["api", "tmf api", "open api", "tmf6", "tmf6", "rest api", "swagger",
+    "TMF_APIs":     ["api", "tmf api", "open api", "tmf6", "rest api", "swagger",
                      "order management api", "product catalog api"],
     "ODA":          ["oda", "open digital architecture", "canvas", "component", "oda component"],
     "Architecture": ["architecture", "design", "solution", "oss", "bss", "system design",
@@ -88,14 +89,11 @@ def load_db():
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
-
     pc = Pinecone(api_key=PINECONE_API_KEY)
-
     vector_store = PineconeVectorStore(
         index_name=PINECONE_INDEX_NAME,
         embedding=embeddings
     )
-
     return vector_store
 
 vectordb  = load_db()
@@ -111,9 +109,7 @@ def get_context(question: str) -> tuple[str, list[str]]:
     if not docs:
         return "", []
 
-    # ✅ FAST: take top docs directly (no reranker)
     top_docs = docs[:3]
-
     context = "\n\n".join(d.page_content for d in top_docs)
 
     sources = []
@@ -132,94 +128,75 @@ def get_reference_urls(question: str) -> list[str]:
     for keyword, url in DOMAIN_URLS.items():
         if keyword in q:
             urls.append(url)
-    return list(dict.fromkeys(urls))   # deduplicate, preserve order
+    return list(dict.fromkeys(urls))
 
 # ── LLM: structure & polish retrieved context ─────────────────────────────────
 def generate_answer(question: str, context: str, history: list) -> str:
 
     import re
 
-    # ✅ CLEAN + LIMIT CONTEXT
+    # Clean + limit context (3000 chars ≈ 750 tokens, leaves room for a full answer)
     context = re.sub(r"\s+", " ", context)
     context = re.sub(r"[^\x00-\x7F]+", " ", context)
-    context = context[:2200]
+    context = context[:3000]
 
-    prompt = f"""
+    architecture_mode = is_architecture_query(question)
 
-You are a Telecom Solution Architect AI.
+    if architecture_mode:
+        task_instructions = """This is an ARCHITECTURE / DESIGN question.
 
-Answer the question clearly using the CONTEXT and your telecom knowledge.
+Design it using telecom standards and frameworks such as:
+- TM Forum (eTOM, SID)
+- ODA (Open Digital Architecture)
 
----
+Do NOT use generic software layers (Presentation/Application/Data Layer).
+Instead use telecom-specific structure:
+- ODA Functional Domains (Core Commerce, Production, Engagement, etc.)
+- OSS/BSS system components
+- Service Orchestration layers
+- Resource / Network layers
+
+Cover, in order:
+1. Architecture Components
+2. End-to-End Flow (telecom example)
+3. Component Interaction
+4. Real telecom use-case (e.g. service activation, network issue)"""
+    else:
+        task_instructions = """This is a DEFINITION / EXPLANATION question.
+Give a clear, structured explanation: what it is, why it matters in telecom,
+and a short real-world example."""
+
+    prompt = f"""You are a Telecom Solution Architect AI assistant.
+
+Your ONLY knowledge source is the CONTEXT below, retrieved from TM Forum,
+ServiceNow, and internal PDF documents. Do NOT use facts from your own
+training data — only restructure and polish what is in the context. If the
+context lacks detail on something, say so plainly rather than inventing it.
+
+CONTEXT:
+{context if context else "⚠️ No relevant context was retrieved for this query."}
 
 QUESTION:
 {question}
 
-CONTEXT:
-{context}
+TASK:
+{task_instructions}
 
----
-
-STEP 1: Identify the question type and respond accordingly:
-
-1. EXPLANATION (e.g., "What is", "Explain")
-   - Give a clear and simple explanation
-   - Include key concepts
-   - Optional: short example
-
-2. ARCHITECTURE / DESIGN (e.g., "design", "architecture", "how to build")
-   You MUST include:
-   - Architecture Components (telecom-specific: ODA, OSS/BSS, TMF)
-   - End-to-End Flow (step-by-step)
-   - Component Interaction (how systems connect)
-   - Real telecom example
-
-   IMPORTANT:
-   - Use telecom concepts (ODA, eTOM, SID, APIs, ServiceNow)
-   - Avoid generic IT layers like "presentation layer"
-   - Do NOT stop early — complete the design
-
-3. COMPARISON (e.g., "compare", "difference")
-   - Give a clear side-by-side comparison
-   - Use table or bullet format
-   - Highlight key differences
-
-4. USE CASES / APPLICATIONS
-   - Provide a bullet list of practical use cases
-   - Keep them relevant to telecom
-
----
-
-RULES:
-
-✅ Start with a short introduction (2–3 lines)  
-✅ Keep answer structured and readable  
-✅ Use context as primary reference  
-✅ If context is incomplete, complete using telecom best practices  
-
-❌ Do NOT cut the answer midway  
-❌ Do NOT use generic software architecture unless necessary  
-❌ Do NOT repeat unnecessary text  
-
----
-
-Now generate a COMPLETE and well-structured answer.
-
-"""
+Write a complete, well-structured answer using markdown headers and bullet
+points. Keep it focused — around 300-400 words — but make sure every section
+you start is finished. Do not cut off mid-sentence."""
 
     try:
-        context = context[:2200]
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=450
+            temperature=0.4,
+            max_tokens=900   # ✅ was 250 — this was truncating every answer
         )
-
         return response.choices[0].message.content
 
-    except Exception:
-        return "⚠️ Unable to generate response. Please try a simpler query."
+    except Exception as e:
+        return f"⚠️ Unable to generate response: {e}"
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -247,7 +224,7 @@ with st.sidebar:
     st.markdown("### 🗂️ Knowledge Domain")
     domain_filter = st.radio("", ["Auto", "ETOM", "SID", "TMF_APIs", "ODA", "Architecture", "ServiceNow"])
     st.divider()
-    st.caption("💡 Answers are grounded in TM Forum & ServiceNow web content. Groq structures the output only.")
+    st.caption("💡 Answers are grounded in TM Forum & ServiceNow web content + PDFs. Groq structures the output only.")
 
 
 # ── Theme ─────────────────────────────────────────────────────────────────────
@@ -341,25 +318,20 @@ if question:
     if chat_data["name"] == "New Chat":
         chat_data["name"] = question[:35]
 
-    # ── RAG retrieval ──────────────────────────────────────────────────────
     typing = st.empty()
     typing.markdown(f"🔍 Searching knowledge base · Domain: **{domain}**")
 
     context, rag_sources = cached_context(question)
 
-
     typing.markdown("🧠 Structuring answer with Groq...")
 
-    # ── Generate (Groq polishes retrieved content) ─────────────────────────
-    answer = generate_answer(question, context, chat[:-1])   # exclude current user msg
+    answer = generate_answer(question, context, chat[:-1])
 
     typing.empty()
 
-    # ── Collect all source URLs ────────────────────────────────────────────
     kw_sources = get_reference_urls(question)
-    all_sources = list(dict.fromkeys(rag_sources + kw_sources))   # RAG sources first
+    all_sources = list(dict.fromkeys(rag_sources + kw_sources))
 
-    # Fallback if nothing matched
     if not all_sources:
         all_sources = ["https://www.tmforum.org/oda/"]
 
@@ -393,7 +365,6 @@ for i, (role, msg, ts) in enumerate(chat):
 
         st.markdown("</div></div>", unsafe_allow_html=True)
 
-        # Regenerate button
         col1, _ = st.columns([1, 4])
         with col1:
             if st.button("🔄 Regenerate", key=f"regen_{i}"):

@@ -25,7 +25,7 @@ from config import (
 )
 
 # ✅ config
-CHUNK_SIZE = 500
+CHUNK_SIZE = 800
 CHUNK_OVERLAP = 60
 PDF_FOLDERS = ["Architecture", "ETOM", "SID", "TMF_APIs"]
 
