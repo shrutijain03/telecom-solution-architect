@@ -183,17 +183,19 @@ TASK:
 {task_instructions}
 
 Write a complete, well-structured answer using markdown headers and bullet
-points. Keep it focused — around 300-400 words — but make sure every section
+points. Keep it focused — around 200-300 words — but make sure every section
 you start is finished. Do not cut off mid-sentence.
 
-IMPORTANT:
+IMPORTANT FOR ALL ANSWERS:
 - Where possible, refer to TM Forum concepts or frameworks from the context
+- When using frameworks (TM Forum, SID, eTOM, ODA), refer explicitly to them.
+- Only mention components that are standard or clearly inferred from telecom systems.
+- Avoid inventing component names.
 - Prefer phrases like:
   "According to TM Forum..."
   "The framework defines..."
 - Avoid generic statements like:
-  "improves efficiency"
-  "enhances collaboration"
+"improves efficiency" unless explained with telecom context
 - Be specific to telecom systems
 - Only state relationships or roles if you are confident from context.
 - Do not infer incorrect relationships (e.g., SID being a process model).
