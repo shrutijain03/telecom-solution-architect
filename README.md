@@ -95,7 +95,7 @@ Local Version
 venv\Scripts\activate
 pip install -r requirements.txt
 streamlit run chatbot.py
-'''
+```bash
   
 Deployed Version
 https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
