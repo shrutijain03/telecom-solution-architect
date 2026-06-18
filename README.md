@@ -1,101 +1,83 @@
-# 📡 Telecom Solution Architect Co‑Pilot
+# Telecom Solution Architect Co‑Pilot
 
-🚀 **Live App:**  
-👉 https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
-
----
-
-## 🧠 Overview
-
-An AI-powered telecom assistant designed to help Solution Architects answer **architecture-level and TM Forum-related questions** quickly and efficiently.
-
-The system is built using a **dual architecture approach**:
-
-- 🖥️ **Local Version (RAG + Ollama)** → Document-grounded answers  
-- 🌐 **Deployed Version (Groq API)** → Fast, scalable AI responses  
-
-
-## 🎯 Project Overview
-
-This project transforms telecom knowledge into an intelligent assistant that can:
-
-- Answer architecture-level questions  
-- Provide **structured and domain-aware responses**  
-- Support multiple telecom frameworks  
-- Simulate a **Solution Architect knowledge assistant**
+**Live App:**  
+ https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
 
 ---
 
-## 🧠 Supported Knowledge Domains
+## Overview
 
-- 📘 **ETOM** – Business process framework  
-- 🧩 **SID** – Information/data model  
-- 🔗 **TM Forum APIs** – Open API ecosystem  
-- 🏗️ **Architecture** – System design & solution patterns  
-- 🧾 **ServiceNow (TMT)** – ITOM, CSM, service workflows  
+An AI-powered telecom assistant designed to help Solution Architects answer **architecture-level and TM Forum-related questions** quickly.
 
----
+The system uses a **RAG-based architecture**, combining:
 
-## ⚙️ How It Works
+- Groq LLM (fast response generation)  
+- Telecom PDFs (domain knowledge)  
+- Web URLs (TM Forum + ServiceNow)  
 
-### 🖥️ Local Version (RAG-Based)
-
-1. User submits a question  
-2. System detects domain  
-3. Retrieves relevant document chunks from vector DB  
-4. Passes context to local LLM (Ollama)  
-5. Generates **grounded response**
+This ensures responses are **accurate, structured, and grounded**.
 
 ---
 
-### 🌐 Deployed Version (Groq API)
+## Project Overview
 
-1. User submits a question  
-2. System detects domain  
-3. Uses **prompt engineering instead of RAG**  
-4. Sends request to Groq API  
-5. Generates **structured telecom response**
+The assistant can:
 
----
-
-## 🧠 Key Features
-
-- 🤖 **Auto Domain Detection**  
-- 🧾 **Structured Responses**  
-- ⚡ **Fast AI Responses (Groq)**  
-- 🧠 **Multi-Domain Telecom Knowledge**  
-- 🌗 **Dark Mode UI**  
-- 🔄 **Regenerate Responses**  
-- 📚 **Source References**  
-- ⏱️ **Timestamps & Chat History**
+- Answer telecom architecture questions  
+- Provide structured, domain-aware responses  
+- Support multiple TM Forum frameworks  
+- Act as a Solution Architect knowledge assistant  
 
 ---
 
-## 🧰 Tech Stack
+## Supported Domains
 
-### 🖥️ Local RAG System
-- Python  
-- LangChain  
-- ChromaDB  
-- HuggingFace Embeddings  
-- Ollama (phi3-mini)  
+- ETOM – Business processes  
+- SID – Data models  
+- TMF APIs – Open APIs  
+- Architecture – OSS/BSS design  
+- ServiceNow (TMT)  
 
 ---
 
-### 🌐 Deployed System
+## How It Works (RAG Pipeline)
+
+1. User asks a question  
+2. System retrieves relevant data from **Pinecone**  
+3. Combines PDF + web context  
+4. Sends context to **Groq LLM**  
+5. Generates a structured answer  
+
+---
+
+## Key Features
+
+- Auto domain detection  
+- Unified PDF + Web knowledge base  
+- Fast responses (Groq)  
+- Grounded answers (RAG)  
+- Source references  
+- Regenerate responses  
+- Chat history  
+
+---
+
+##  Tech Stack
+
 - Streamlit  
-- Groq API (Llama3)  
-- Prompt Engineering  
+- Groq (Llama 3.1 8B)  
+- Pinecone  
+- HuggingFace Embeddings  
+- Python  
 
 ---
 
-## 📂 Project Structure
-project/
+## Project Structure
+Project/
 │
-├── chatbot.py           # Main chatbot app (Groq deployed version)
-├── chatbot_gemini_backup.py   # Backup of Gemini version
+├── chatbot.py
 ├── ingest.py
-├── rag_query.py
+├── config.py
 ├── README.md
 │
 ├── ETOM/
@@ -103,49 +85,32 @@ project/
 ├── TMF_APIs/
 ├── Architecture/
 ├── ServiceNow/
-│
-└── tmforum_db/
 
 ---
 
-## ⚙️ Setup & Run (Local RAG Version)
+## Setup & Run
 
+Local Version
 ```bash
 venv\Scripts\activate
 pip install -r requirements.txt
-python ingest.py
 streamlit run chatbot.py
 
-
-🌐 Deployed Version
-👉 Available here:
+  
+Deployed Version
 https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
 
 Uses Groq API
 No local setup required
-Accessible via browser
 
 
-🧠 Design Approach
+Future Enhancements
 
-Uses RAG to reduce hallucination
-Combines domain detection + structured prompts
-Uses prompt engineering for architecture answers
-Balances accuracy (RAG) and scalability (Groq)
-
-
-🚀 Future Enhancements
-
-Integrate real-time telecom data sources
-Enable cloud-based RAG using vector databases (e.g., Pinecone)
-Improve UI with architecture diagrams and analytics
-
-✅ Dynamic Knowledge Updates:
-
-Include TM Forum documentation links along with PDFs
-Keep knowledge base automatically updated as TM Forum evolves
+Add more telecom sources
+Improve architecture depth
+Generate diagrams automatically
 
 
-👩‍💻 Author
+Author
 Shruti Jain
 Intern
