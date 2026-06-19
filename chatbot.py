@@ -323,8 +323,8 @@ if not chat:
     
         "Which TMF Open APIs are used in order-to-cash lifecycle?",
         "Design an OSS architecture using ODA components",
-        "How does ServiceNow TMT integrate with TM Forum APIs?",
-        "Compare SID data model with ServiceNow CMDB"
+        "Compare SID data model with ServiceNow CMDB",
+        "How does ServiceNow TMT integrate with TM Forum APIs?"
         
     ]
     col1, col2 = st.columns(2)
