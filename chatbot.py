@@ -297,7 +297,21 @@ div[data-testid="column"] .stButton>button p {{color:{SG_COLOR}!important;}}
 div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+h1, h2, h3 {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    margin-top: 10px !important;
+    margin-bottom: 6px !important;
+}
 
+h4, h5, h6 {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ── Title ─────────────────────────────────────────────────────────────────────
 st.markdown("""
