@@ -223,7 +223,7 @@ Explanation text
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 💬 Chats")
+    st.markdown("### Chats")
 
     if st.button("＋ New Chat", use_container_width=True):
         cid = str(uuid.uuid4())
@@ -241,10 +241,10 @@ with st.sidebar:
             st.button("⋮", key=f"menu_{cid}")
 
     st.divider()
-    st.markdown("### 🎨 Appearance")
+    st.markdown("### Appearance")
     dark_mode = st.toggle("Dark Mode", value=False)
     st.divider()
-    st.markdown("### 🗂️ Knowledge Domain")
+    st.markdown("### Knowledge Domain")
     domain_filter = st.radio("", ["Auto", "ETOM", "SID", "TMF_APIs", "ODA", "Architecture", "ServiceNow"])
     st.divider()
     st.caption("💡 Answers are grounded in TM Forum & ServiceNow web content + PDFs. Groq structures the output only.")
@@ -299,17 +299,34 @@ div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
 """, unsafe_allow_html=True)
 st.markdown("""
 <style>
-h1, h2, h3 {
+
+/* Main heading (top title) */
+h1 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    margin-top: 12px !important;
+}
+
+/* Section headings */
+h2 {
     font-size: 18px !important;
     font-weight: 600 !important;
     margin-top: 10px !important;
-    margin-bottom: 6px !important;
 }
 
-h4, h5, h6 {
+/* Sub-sections */
+h3 {
     font-size: 16px !important;
+    font-weight: 600 !important;
+    margin-top: 8px !important;
+}
+
+/* Smaller text */
+h4, h5, h6 {
+    font-size: 15px !important;
     font-weight: 500 !important;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
