@@ -106,10 +106,10 @@ https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
 
 ## Future Enhancements
 
-Add more telecom sources
-Improve architecture depth
-Generate diagrams automatically
+- Add more telecom sources
+- Improve architecture depth
+- Generate diagrams automatically
 
 # Author
 Shruti Jain
-Intern
+(Intern)
