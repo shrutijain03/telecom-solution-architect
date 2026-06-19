@@ -89,27 +89,27 @@ Project/
 ---
 
 ## Setup & Run
+### Local Version
 
-Local Version
 ```bash
-venv\Scripts\activate
+venv\\Scripts\\activate
 pip install -r requirements.txt
 streamlit run chatbot.py
-  
-Deployed Version
+```
+
+### Deployed Version
 https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
 
-Uses Groq API
-No local setup required
+- Uses Groq API
+- No local setup required
 
 
-Future Enhancements
+## Future Enhancements
 
 Add more telecom sources
 Improve architecture depth
 Generate diagrams automatically
 
-
-Author
+# Author
 Shruti Jain
 Intern
