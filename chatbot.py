@@ -289,6 +289,21 @@ div[data-testid="column"] .stButton>button p {{color:{SG_COLOR}!important;}}
 div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+h1, h2, h3 {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    margin-top: 10px !important;
+    margin-bottom: 6px !important;
+}
+
+h4, h5, h6 {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ── Title ─────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -305,12 +320,12 @@ chat      = chat_data["messages"]
 if not chat:
     st.markdown(f"<p style='text-align:center;font-size:15px;font-weight:500;color:{TEXT_COLOR};margin-bottom:8px;'>💡 Try a suggested query</p>", unsafe_allow_html=True)
     suggested = [
-        "Explain eTOM Level 2 process for Service Problem Management",
+    
         "Which TMF Open APIs are used in order-to-cash lifecycle?",
         "Design an OSS architecture using ODA components",
         "How does ServiceNow TMT integrate with TM Forum APIs?",
-        "Compare SID data model with ServiceNow CMDB",
-        "What is the ODA Canvas and how does it enable microservices?",
+        "Compare SID data model with ServiceNow CMDB"
+        
     ]
     col1, col2 = st.columns(2)
     for idx, q in enumerate(suggested):
