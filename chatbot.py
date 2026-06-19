@@ -200,13 +200,10 @@ IMPORTANT FOR ALL ANSWERS:
 - Only state relationships or roles if you are confident from context.
 - Do not infer incorrect relationships (e.g., SID being a process model).
 FORMAT:
-- Use this structure:
 
-**What is ...**
-Explanation text
-
-**Why it matters**
-Explanation text
+- Use ONE main heading at the top using (#)
+- Use smaller headings (###) for sections
+- Do NOT use multiple large headings
 """
 
     try:
@@ -300,31 +297,30 @@ div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
 st.markdown("""
 <style>
 
-/* Main heading (top title) */
+/* MAIN TITLE (make this clearly bigger) */
 h1 {
-    font-size: 22px !important;
+    font-size: 26px !important;
     font-weight: 700 !important;
+    margin-top: 14px !important;
+    margin-bottom: 10px !important;
+}
+
+/* SECTION HEADINGS */
+h2 {
+    font-size: 20px !important;
+    font-weight: 600 !important;
     margin-top: 12px !important;
 }
 
-/* Section headings */
-h2 {
-    font-size: 18px !important;
-    font-weight: 600 !important;
-    margin-top: 10px !important;
-}
-
-/* Sub-sections */
+/* SUB HEADINGS */
 h3 {
-    font-size: 16px !important;
+    font-size: 17px !important;
     font-weight: 600 !important;
-    margin-top: 8px !important;
 }
 
-/* Smaller text */
-h4, h5, h6 {
-    font-size: 15px !important;
-    font-weight: 500 !important;
+/* NORMAL TEXT */
+p, li {
+    font-size: 14px !important;
 }
 
 </style>
