@@ -297,30 +297,27 @@ div[data-testid="column"] .stButton>button:hover {{opacity:0.85!important;}}
 st.markdown("""
 <style>
 
-/* MAIN TITLE (make this clearly bigger) */
-h1 {
-    font-size: 26px !important;
-    font-weight: 700 !important;
-    margin-top: 14px !important;
-    margin-bottom: 10px !important;
+/* MAIN APP TITLE (Streamlit title) */
+h1, .stTitle {
+    font-size: 34px !important;
+    font-weight: 800 !important;
+    text-align: center;
 }
 
-/* SECTION HEADINGS */
+/* Optional: subtitle below */
+p {
+    font-size: 15px !important;
+}
+
+/* Response headings */
 h2 {
     font-size: 20px !important;
     font-weight: 600 !important;
-    margin-top: 12px !important;
 }
 
-/* SUB HEADINGS */
 h3 {
     font-size: 17px !important;
     font-weight: 600 !important;
-}
-
-/* NORMAL TEXT */
-p, li {
-    font-size: 14px !important;
 }
 
 </style>
