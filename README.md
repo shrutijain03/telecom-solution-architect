@@ -62,54 +62,66 @@ The assistant can:
 
 ---
 
-##  Tech Stack
+## Tech Stack
 
-- Streamlit  
-- Groq (Llama 3.1 8B)  
-- Pinecone  
-- HuggingFace Embeddings  
-- Python  
-
+- Vector DB: Pinecone (cloud)
+- Embeddings: HuggingFace MiniLM-L6-v2
+- LLM: Groq (llama-3.3-70b-instant)
+- Sources: PDFs + Web URLs
+- UI: Streamlit
+- Language: Python 3.11
+ 
 ---
 
 ## Project Structure
-Project/
+telecom-solution-architect-copilot/
 │
-├── chatbot.py
-├── ingest.py
-├── config.py
-├── README.md
+├── chatbot.py           # Main Streamlit application
+├── ingest.py            # PDF + web ingestion pipeline
+├── rag_query.py         # Retrieval and query logic
+├── config.py            # Configuration settings
+├── scheduler.py         # Auto-ingestion scheduler
 │
-├── ETOM/
-├── SID/
-├── TMF_APIs/
-├── Architecture/
-├── ServiceNow/
+├── ETOM/                # Business process documents
+├── SID/                 # Data model documents
+├── SID extra/           # Additional SID references
+├── TMF_APIs/            # TM Forum API docs
+├── Architecture/        # System architecture docs
+│
+├── .streamlit/
+│   └── secrets.toml     # API keys (not tracked in git)
+│
+├── requirements.txt     # Dependencies
+├── README.md            # Project documentation
+├── .gitignore
+├── venv/                # Local virtual environment (ignored)
+├── pycache/         # Python cache (ignored)
+
 
 ---
 
 ## Setup & Run
-### Local Version
-
-```bash
-pip install -r requirements.txt
-python ingest.py
-venv\Scripts\activate.bat
-streamlit run chatbot.py
-```
-
 ### Deployed Version
 https://telecom-solution-architect-iyg3coig7frdzs34eflfxa.streamlit.app/
 
 - Uses Groq API
 - No local setup required
 
+### Local Version(Optional)
+
+```bash
+venv\Scripts\activate.bat
+pip install -r requirements.txt
+python ingest.py
+streamlit run chatbot.py
+```
 
 ## Future Enhancements
 
-- Add more telecom sources
-- Improve architecture depth
-- Generate diagrams automatically
+- Architecture Automation – Enable auto-generation of architecture diagrams
+- Enterprise Integration – Support enterprise knowledge sources (SharePoint, internal docs)
+- Expanded Data Sources – Add more standards (3GPP, ETSI) and web sources
+
 
 # Author
 Shruti Jain
