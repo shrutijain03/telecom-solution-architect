@@ -1,7 +1,7 @@
 # Telecom Solution Architect Co‑Pilot
 
 **Live App:**  
- https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
+https://telecom-solution-architect-iyg3coig7frdzs34eflfxa.streamlit.app/
 
 ---
 
@@ -92,13 +92,14 @@ Project/
 ### Local Version
 
 ```bash
-venv\\Scripts\\activate
 pip install -r requirements.txt
+python ingest.py
+venv\Scripts\activate.bat
 streamlit run chatbot.py
 ```
 
 ### Deployed Version
-https://telecom-solution-architect-4cquhhnqfdujgxakdwjqbd.streamlit.app/
+https://telecom-solution-architect-iyg3coig7frdzs34eflfxa.streamlit.app/
 
 - Uses Groq API
 - No local setup required
